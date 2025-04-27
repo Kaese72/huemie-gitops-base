@@ -3,11 +3,15 @@ apiVersion: v1
 kind: ServiceAccount
 metadata:
   name: adapter-attendant
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
 ---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: adapter-attendant
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
 spec:
   replicas: 2
   selector:
@@ -49,6 +53,8 @@ kind: Service
 metadata:
   labels:
     app: adapter-attendant
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
   name: adapter-attendant
 spec:
   ports:

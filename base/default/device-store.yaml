@@ -2,6 +2,8 @@ apiVersion: apps/v1
 kind: Deployment
 metadata:
   name: device-store
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
 spec:
   replicas: 2
   selector:
@@ -49,8 +51,7 @@ metadata:
   labels:
     app: device-store-migrater
   annotations:
-    argocd.argoproj.io/hook: PreSync
-    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+    argocd.argoproj.io/sync-wave: "40"
 spec:
   backoffLimit: 1
   ttlSecondsAfterFinished: 60
@@ -94,6 +95,8 @@ kind: Service
 metadata:
   labels:
     app: device-store
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
   name: device-store
 spec:
   ports:

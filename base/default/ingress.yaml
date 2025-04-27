@@ -3,6 +3,8 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: huemie-ingress
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
 spec:
   rules:
     - host: app.huemie.space
