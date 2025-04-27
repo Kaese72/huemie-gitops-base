@@ -26,7 +26,8 @@
             ],
             "groupName": "dev-images",
             "versioning": "regex:^v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<build>\\d+)-[\\d\\w]+$",
-            "automerge": true
+            "automerge": true,
+            "ignoreTests": true
         },
         {
             "matchFileNames": [
