@@ -23,7 +23,14 @@
             "matchPackageNames": [
                 "**/*-development"
             ],
+            "groupName": "dev-images",
             "versioning": "regex:^v?(?<major>\\d+)\\.(?<minor>\\d+)\\.(?<patch>\\d+)-(?<build>\\d+)-[\\d\\w]+$"
+        },
+        {
+            "matchFileNames": [
+                "base/.*.yaml"
+            ],
+            "groupName": "base-images"
         }
     ]
 }
