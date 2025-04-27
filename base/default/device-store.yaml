@@ -15,7 +15,7 @@ spec:
     spec:
       containers:
         - name: device-store
-          image: ghcr.io/kaese72/device-store:v0.0.56
+          image: ghcr.io/kaese72/device-store:v0.0.57
           env:
             - name: "DATABASE_HOST"
               valueFrom:
