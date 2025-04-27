@@ -17,5 +17,3 @@ jobs:
         with:
           configurationFile: renovate-global.json
           token: ${{ secrets.RENOVATE_TOKEN }}
-        env:
-          LOG_LEVEL: debug
