@@ -1,0 +1,61 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: adapter-attendant
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adapter-attendant
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: adapter-attendant
+  template:
+    metadata:
+      labels:
+        app: adapter-attendant
+        huemie-owner: core
+    spec:
+      containers:
+        - name: adapter-attendant
+          image: ghcr.io/kaese72/adapter-attendant-api:v0.0.16
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 250m
+              memory: 256M
+            requests:
+              cpu: 100m
+              memory: 256M
+          env:
+            - name: KUBERNETES_ADAPTER_NAMESPACE
+              valueFrom:
+                configMapKeyRef:
+                  name: adapter-attendant-configmap
+                  key: adapter.namespace
+            - name: DEVICE_STORE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: adapter-attendant-configmap
+                  key: device-store.url
+      serviceAccountName: adapter-attendant
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: adapter-attendant
+  name: adapter-attendant
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: adapter-attendant
+status:
+  loadBalancer: {}

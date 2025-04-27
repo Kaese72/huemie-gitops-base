@@ -1,0 +1,31 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: huemie-ingress
+spec:
+  rules:
+    - host: app.huemie.space
+      http:
+        paths:
+          - path: /device-store
+            pathType: Prefix
+            backend:
+              service:
+                name: device-store
+                port:
+                  number: 8080
+          - path: /device-ingest
+            pathType: Prefix
+            backend:
+              service:
+                name: device-store
+                port:
+                  number: 8080
+          - path: /adapter-attendant
+            pathType: Prefix
+            backend:
+              service:
+                name: adapter-attendant
+                port:
+                  number: 8080

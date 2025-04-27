@@ -1,0 +1,33 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: huemie-local
+
+configMapGenerator:
+- name: adapter-attendant-configmap
+  literals:
+    - adapter.namespace=adapters
+    - device-store.url=http://device-store.huemie-local:8080
+- name: device-store-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=user
+    - adapter-attendant.url=http://adapter-attendant:8080
+
+secretGenerator:
+- name: device-store-secret
+  literals:
+    - database.password=databaseuserpassword
+
+resources:
+ - namespace.yaml
+ - ../../base/default
+ - ../3pp
+
+patches:
+  - target:
+      kind: Ingress
+      name: huemie-ingress
+    patch: |-
+      - op: add
+        path: /spec/rules/0/host
+        value: 

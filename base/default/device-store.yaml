@@ -1,0 +1,106 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: device-store
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: device-store
+  template:
+    metadata:
+      labels:
+        app: device-store
+        huemie-owner: core
+    spec:
+      containers:
+        - name: device-store
+          image: ghcr.io/kaese72/device-store:v0.0.56
+          env:
+            - name: "DATABASE_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: device-store-configmap
+                  key: database.host
+            - name: "DATABASE_USER"
+              valueFrom:
+                configMapKeyRef:
+                  name: device-store-configmap
+                  key: database.user
+            - name: "DATABASE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: device-store-secret
+                  key: database.password
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 1000m
+              memory: 256M
+            requests:
+              cpu: 500m
+              memory: 256M
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: device-store-migrater
+  labels:
+    app: device-store-migrater
+  annotations:
+    argocd.argoproj.io/hook: PreSync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  ttlSecondsAfterFinished: 60
+  template:
+    metadata:
+      labels:
+        app: device-store-migrater
+    spec:
+      containers:
+      - name: device-store-migrater
+        image: ghcr.io/kaese72/device-store-migrater:v0.0.56
+        imagePullPolicy: IfNotPresent
+        args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/devicestore?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
+        env:
+          - name: "DATABASE_HOST"
+            valueFrom:
+              configMapKeyRef:
+                name: device-store-configmap
+                key: database.host
+          - name: "DATABASE_USER"
+            valueFrom:
+              configMapKeyRef:
+                name: device-store-configmap
+                key: database.user
+          - name: "DATABASE_PASSWORD"
+            valueFrom:
+              secretKeyRef:
+                name: device-store-secret
+                key: database.password
+        resources:
+            limits:
+              cpu: 250m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+      restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: device-store
+  name: device-store
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: device-store
+status:
+  loadBalancer: {}

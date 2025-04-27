@@ -1,0 +1,21 @@
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: adapter-attendant-namespace-admin
+rules:
+  - apiGroups: ["", "apps"] # "" indicates the core API group
+    resources: ["configmaps", "deployments", "services", "namespaces"]
+    verbs: ["get", "patch", "list", "create", "update", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: adapter-attendant-adapter-admin-binding
+roleRef:
+  apiGroup: rbac.authorization.k8s.io
+  kind: Role
+  name: adapter-attendant-namespace-admin
+subjects:
+  - kind: ServiceAccount
+    name: adapter-attendant

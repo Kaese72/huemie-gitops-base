@@ -1,0 +1,10 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+resources:
+ - ../local/
+
+images:
+  - name: ghcr.io/kaese72/device-store
+    newName: ghcr.io/kaese72/device-store-development
+    newTag: v0.0.56-20250427-102255-09f8766
