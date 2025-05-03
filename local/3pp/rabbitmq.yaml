@@ -1,0 +1,97 @@
+---
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: rabbitmq-configmap
+data:
+  definitions.json: |-
+    # RabbitMQ definitions go here
+  enabled_plugins: '[rabbitmq_peer_discovery_k8s].'
+  rabbitmq.conf: |-
+    # RabbitMQ configuration options go here
+---
+apiVersion: apps/v1
+kind: StatefulSet
+metadata:
+  name: rabbitmq
+spec:
+  serviceName: rabbitmq-headless
+  replicas: 1
+  selector:
+    matchLabels:
+      app: rabbitmq
+  template:
+    metadata:
+      labels:
+        app: rabbitmq
+    spec:
+      containers:
+        - name: rabbitmq
+          image: rabbitmq:3-management
+          ports:
+            - name: amqp
+              containerPort: 5672
+              protocol: TCP
+            - name: http
+              containerPort: 15672
+              protocol: TCP
+          livenessProbe:
+              exec:
+                command:
+                - rabbitmq-diagnostics
+                - status
+              initialDelaySeconds: 60
+              periodSeconds: 60
+              timeoutSeconds: 15
+          readinessProbe:
+              exec:
+                command:
+                - rabbitmq-diagnostics
+                - ping
+              initialDelaySeconds: 20
+              periodSeconds: 60
+              timeoutSeconds: 10
+          volumeMounts:
+            - name: rabbitmq-config
+              mountPath: /etc/rabbitmq
+            - name: rabbitmq-data
+              mountPath: /var/lib/rabbitmq/
+          resources:
+            limits:
+              cpu: 500m
+              memory: 256M
+            requests:
+              cpu: 200m
+              memory: 256M
+      volumes:
+        - name: rabbitmq-config
+          configMap:
+            name: rabbitmq-configmap 
+  volumeClaimTemplates:
+    - metadata:
+        name: rabbitmq-data
+      spec:
+        accessModes:
+          - ReadWriteOnce
+        resources:
+          requests:
+            storage: 10Gi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: rabbitmq-headless
+  # Add labels and annotations as per your requirements
+spec:
+  ports:
+    - name: amqp
+      port: 5672
+      protocol: TCP
+      targetPort: 5672
+    - name: http
+      port: 15672
+      protocol: TCP
+      targetPort: 15672
+  selector:
+    app: rabbitmq
+  type: ClusterIP
