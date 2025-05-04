@@ -82,6 +82,11 @@ spec:
               secretKeyRef:
                 name: device-store-secret
                 key: database.password
+          - name: "EVENT_CONNECTIONSTRING"
+            valueFrom:
+              secretKeyRef:
+                name: device-store-secret
+                key: database.event.connectionstring
         resources:
             limits:
               cpu: 250m
