@@ -9,6 +9,8 @@ data:
   enabled_plugins: '[rabbitmq_peer_discovery_k8s].'
   rabbitmq.conf: |-
     # RabbitMQ configuration options go here
+    # Only for local development:
+    loopback_users = none
 ---
 apiVersion: apps/v1
 kind: StatefulSet
