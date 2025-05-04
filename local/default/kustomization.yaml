@@ -12,12 +12,12 @@ configMapGenerator:
     - database.host=mariadb
     - database.user=user
     - adapter-attendant.url=http://adapter-attendant:8080
-    - database.event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
 
 secretGenerator:
 - name: device-store-secret
   literals:
     - database.password=databaseuserpassword
+    - database.event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
 
 resources:
  - namespace.yaml
