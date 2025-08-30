@@ -7,7 +7,7 @@ resources:
 images:
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
-    newTag: v0.0.57-20250824214344-b30ecea
+    newTag: v0.0.57-20250830210133-99bf2c7
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
-    newTag: v0.0.57-20250824214347-b30ecea
+    newTag: v0.0.57-20250830210133-99bf2c7
