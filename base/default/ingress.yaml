@@ -31,7 +31,7 @@ spec:
                 name: adapter-attendant
                 port:
                   number: 8080
-          - path: /huemie-ui
+          - path: /
             pathType: Prefix
             backend:
               service:
