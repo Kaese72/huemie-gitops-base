@@ -11,3 +11,6 @@ images:
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
     newTag: v0.0.57-20250909194848-6adffce
+  - name: ghcr.io/kaese72/huemie-ui
+    newName: ghcr.io/kaese72/huemie-ui-development
+    newTag: v0.0.4-20250913180333-e425a66
