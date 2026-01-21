@@ -13,4 +13,4 @@ images:
     newTag: v0.0.62-20260121221521-6463222
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.4-20250913180333-e425a66
+    newTag: v0.0.4-20260121224053-a8219cc
