@@ -16,7 +16,12 @@ metadata:
 ---
 apiVersion: v1
 data:
-  init.sql: "CREATE DATABASE IF NOT EXISTS devicestore; CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'databaseuserpassword'; GRANT ALL PRIVILEGES ON devicestore.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';"
+  init.sql: |
+    CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
+    CREATE DATABASE IF NOT EXISTS devicestore;
+    GRANT ALL PRIVILEGES ON devicestore.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
+    CREATE DATABASE IF NOT EXISTS adapterattendant;
+    GRANT ALL PRIVILEGES ON adapterattendant.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
 kind: ConfigMap
 metadata:
   name: mariadb-init-sql
