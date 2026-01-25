@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: adapter-attendant
-          image: ghcr.io/kaese72/adapter-attendant-api:v0.0.16
+          image: ghcr.io/kaese72/adapter-attendant:v0.0.18
           ports:
             - containerPort: 8080
           resources:
@@ -46,7 +46,69 @@ spec:
                 configMapKeyRef:
                   name: adapter-attendant-configmap
                   key: device-store.url
+            - name: DATABASE_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: adapter-attendant-configmap
+                  key: database.host
+            - name: DATABASE_USER
+              valueFrom:
+                configMapKeyRef:
+                  name: adapter-attendant-configmap
+                  key: database.user
+            - name: DATABASE_PASSWORD
+              valueFrom:
+                secretKeyRef:
+                  name: adapter-attendant-secret
+                  key: database.password
       serviceAccountName: adapter-attendant
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: adapter-attendant-migrater
+  labels:
+    app: adapter-attendant-migrater
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: adapter-attendant-migrater
+    spec:
+      containers:
+      - name: adapter-attendant-migrater
+        image: ghcr.io/kaese72/adapter-attendant-migrater:v0.0.18
+        imagePullPolicy: IfNotPresent
+        args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/adapterattendant?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
+        env:
+          - name: "DATABASE_HOST"
+            valueFrom:
+              configMapKeyRef:
+                name: adapter-attendant-configmap
+                key: database.host
+          - name: "DATABASE_USER"
+            valueFrom:
+              configMapKeyRef:
+                name: adapter-attendant-configmap
+                key: database.user
+          - name: "DATABASE_PASSWORD"
+            valueFrom:
+              secretKeyRef:
+                name: adapter-attendant-secret
+                key: database.password
+        resources:
+            limits:
+              cpu: 250m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+      restartPolicy: Never
 ---
 apiVersion: v1
 kind: Service

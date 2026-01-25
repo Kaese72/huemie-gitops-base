@@ -7,6 +7,8 @@ configMapGenerator:
   literals:
     - adapter.namespace=adapters
     - device-store.url=http://device-store.huemie-local:8080
+    - database.host=mariadb
+    - database.user=user
 - name: device-store-configmap
   literals:
     - database.host=mariadb
@@ -14,6 +16,9 @@ configMapGenerator:
     - adapter-attendant.url=http://adapter-attendant:8080
 
 secretGenerator:
+- name: adapter-attendant-secret
+  literals:
+    - database.password=databaseuserpassword
 - name: device-store-secret
   literals:
     - database.password=databaseuserpassword
