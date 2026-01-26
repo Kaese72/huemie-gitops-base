@@ -16,7 +16,7 @@ images:
     newTag: v0.0.4-20260121224053-a8219cc
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
-    newTag: v0.0.18-20260125162605-9cbbaf4
+    newTag: v0.0.18-20260126180059-14e87a5
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
-    newTag: v0.0.18-20260125162604-9cbbaf4
+    newTag: v0.0.18-20260126180103-14e87a5
