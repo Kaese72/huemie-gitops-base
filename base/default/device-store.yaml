@@ -73,7 +73,7 @@ spec:
     spec:
       containers:
       - name: device-store-migrater
-        image: ghcr.io/kaese72/device-store-migrater:v0.0.57
+        image: ghcr.io/kaese72/device-store-migrater:v0.0.63
         imagePullPolicy: IfNotPresent
         args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/devicestore?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
         env:
