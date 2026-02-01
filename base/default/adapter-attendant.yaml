@@ -41,11 +41,16 @@ spec:
                 configMapKeyRef:
                   name: adapter-attendant-configmap
                   key: adapter.namespace
-            - name: DEVICE_STORE_URL
+            - name: ADAPTERS_DEVICE_STORE_URL
               valueFrom:
                 configMapKeyRef:
                   name: adapter-attendant-configmap
-                  key: device-store.url
+                  key: adapters.device-store-url
+            - name: ADAPTERS_DEVICE_STORE_JWT_SECRET
+              valueFrom:
+                secretKeyRef:
+                  name: adapter-attendant-secret
+                  key: adapters.device-store-jwt-secret
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:

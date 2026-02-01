@@ -6,7 +6,7 @@ configMapGenerator:
 - name: adapter-attendant-configmap
   literals:
     - adapter.namespace=adapters
-    - device-store.url=http://device-store.huemie-local:8080
+    - adapters.device-store-url=http://device-store.huemie-local:8080
     - database.host=mariadb
     - database.user=user
 - name: device-store-configmap
@@ -19,10 +19,12 @@ secretGenerator:
 - name: adapter-attendant-secret
   literals:
     - database.password=databaseuserpassword
+    - adapters.device-store-jwt-secret=supersecretjwtsecret
 - name: device-store-secret
   literals:
     - database.password=databaseuserpassword
     - database.event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
+    - adapters.device-store-jwt-secret=supersecretjwtsecret
 
 resources:
  - namespace.yaml

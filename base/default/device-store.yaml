@@ -39,6 +39,11 @@ spec:
                 secretKeyRef:
                   name: device-store-secret
                   key: database.event.connectionstring
+            - name: "ADAPTERS_DEVICE_STORE_JWT_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: device-store-secret
+                  key: adapters.device-store-jwt-secret
           ports:
             - containerPort: 8080
           resources:
