@@ -25,7 +25,7 @@ spec:
     spec:
       containers:
         - name: adapter-attendant
-          image: ghcr.io/kaese72/adapter-attendant:v0.0.18
+          image: ghcr.io/kaese72/adapter-attendant:v0.0.19
           ports:
             - containerPort: 8080
           resources:
