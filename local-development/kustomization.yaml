@@ -7,13 +7,13 @@ resources:
 images:
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
-    newTag: v0.0.63-20260201211314-a611b78
+    newTag: v0.0.63-20260221092059-e0f4af2
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
-    newTag: v0.0.63-20260201211312-a611b78
+    newTag: v0.0.63-20260221092100-e0f4af2
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.4-20260201212002-fe5f065
+    newTag: v0.0.4-20260221092114-2148739
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
     newTag: v0.0.19-20260208124436-27c9924
