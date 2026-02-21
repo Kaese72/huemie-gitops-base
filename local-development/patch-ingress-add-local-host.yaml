@@ -1,0 +1,6 @@
+- op: copy
+  from: /spec/rules/0
+  path: /spec/rules/1
+- op: replace
+  path: /spec/rules/1/host
+  value: local.huemie.space

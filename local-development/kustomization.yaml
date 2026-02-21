@@ -4,6 +4,14 @@ kind: Kustomization
 resources:
  - ../local/
 
+patchesJson6902:
+  - target:
+      group: networking.k8s.io
+      version: v1
+      kind: Ingress
+      name: huemie-ingress
+    path: patch-ingress-add-local-host.yaml
+
 images:
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
