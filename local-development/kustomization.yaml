@@ -15,10 +15,10 @@ patchesJson6902:
 images:
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
-    newTag: v0.0.64-20260322115246-ad074d0
+    newTag: v0.0.64-20260322211525-7322d97
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
-    newTag: v0.0.64-20260322115246-ad074d0
+    newTag: v0.0.64-20260322211527-7322d97
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
     newTag: v0.0.6-20260322131439-a951121
