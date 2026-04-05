@@ -1,5 +1,6 @@
 resources:
   - adapter-attendant.yaml
   - device-store.yaml
+  - ittt-orchestrator.yaml
   - ui.yaml
   - ingress.yaml

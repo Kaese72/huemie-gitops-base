@@ -22,6 +22,8 @@ data:
     GRANT ALL PRIVILEGES ON devicestore.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
     CREATE DATABASE IF NOT EXISTS adapterattendant;
     GRANT ALL PRIVILEGES ON adapterattendant.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
+    CREATE DATABASE IF NOT EXISTS itttorchestrator;
+    GRANT ALL PRIVILEGES ON itttorchestrator.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
 kind: ConfigMap
 metadata:
   name: mariadb-init-sql

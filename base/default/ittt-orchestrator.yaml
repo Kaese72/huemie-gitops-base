@@ -1,0 +1,115 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ittt-orchestrator
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ittt-orchestrator
+  template:
+    metadata:
+      labels:
+        app: ittt-orchestrator
+        huemie-owner: core
+    spec:
+      containers:
+        - name: ittt-orchestrator
+          image: ghcr.io/kaese72/ittt-orchestrator:v0.0.1
+          env:
+            - name: "DATABASE_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: ittt-orchestrator-configmap
+                  key: database.host
+            - name: "DATABASE_USER"
+              valueFrom:
+                configMapKeyRef:
+                  name: ittt-orchestrator-configmap
+                  key: database.user
+            - name: "DATABASE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: ittt-orchestrator-secret
+                  key: database.password
+            - name: "EVENT_CONNECTIONSTRING"
+              valueFrom:
+                secretKeyRef:
+                  name: ittt-orchestrator-secret
+                  key: event.connectionstring
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ittt-orchestrator-migrater
+  labels:
+    app: ittt-orchestrator-migrater
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: ittt-orchestrator-migrater
+    spec:
+      containers:
+        - name: ittt-orchestrator-migrater
+          image: ghcr.io/kaese72/ittt-orchestrator-migrater:v0.0.1
+          imagePullPolicy: IfNotPresent
+          args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/itttorchestrator?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
+          env:
+            - name: "DATABASE_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: ittt-orchestrator-configmap
+                  key: database.host
+            - name: "DATABASE_USER"
+              valueFrom:
+                configMapKeyRef:
+                  name: ittt-orchestrator-configmap
+                  key: database.user
+            - name: "DATABASE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: ittt-orchestrator-secret
+                  key: database.password
+          resources:
+            limits:
+              cpu: 250m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+      restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: ittt-orchestrator
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: ittt-orchestrator
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: ittt-orchestrator
+status:
+  loadBalancer: {}

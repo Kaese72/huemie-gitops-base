@@ -24,6 +24,13 @@ spec:
                 name: device-store
                 port:
                   number: 8080
+          - path: /ittt-orchestrator
+            pathType: Prefix
+            backend:
+              service:
+                name: ittt-orchestrator
+                port:
+                  number: 8080
           - path: /adapter-attendant
             pathType: Prefix
             backend:
