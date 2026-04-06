@@ -18,6 +18,7 @@ spec:
       containers:
         - name: ittt-orchestrator
           image: ghcr.io/kaese72/ittt-orchestrator:v0.0.1
+          args: ["api"]
           env:
             - name: "DATABASE_HOST"
               valueFrom:
@@ -44,6 +45,56 @@ spec:
           resources:
             limits:
               cpu: 500m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: ittt-orchestrator-rule-state
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: ittt-orchestrator-rule-state
+  template:
+    metadata:
+      labels:
+        app: ittt-orchestrator-rule-state
+        huemie-owner: core
+    spec:
+      containers:
+        - name: ittt-orchestrator-rule-state
+          image: ghcr.io/kaese72/ittt-orchestrator:v0.0.1
+          args: ["rule-state"]
+          env:
+            - name: "DATABASE_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: ittt-orchestrator-configmap
+                  key: database.host
+            - name: "DATABASE_USER"
+              valueFrom:
+                configMapKeyRef:
+                  name: ittt-orchestrator-configmap
+                  key: database.user
+            - name: "DATABASE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: ittt-orchestrator-secret
+                  key: database.password
+            - name: "EVENT_CONNECTIONSTRING"
+              valueFrom:
+                secretKeyRef:
+                  name: ittt-orchestrator-secret
+                  key: event.connectionstring
+          resources:
+            limits:
+              cpu: 250m
               memory: 128M
             requests:
               cpu: 100m
