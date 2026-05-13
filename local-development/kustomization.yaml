@@ -30,7 +30,7 @@ images:
     newTag: v0.0.20-20260318161718-3a5b4f1
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
-    newTag: v0.0.1-20260509095003-98e3dda
+    newTag: v0.0.1-20260513134026-3d99225
   - name: ghcr.io/kaese72/ittt-orchestrator-migrater
     newName: ghcr.io/kaese72/ittt-orchestrator-migrater-development
-    newTag: v0.0.1-20260509095003-98e3dda
+    newTag: v0.0.1-20260513134018-3d99225
