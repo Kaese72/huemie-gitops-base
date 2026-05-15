@@ -9,7 +9,7 @@ spec:
   rules:
     - host: app.huemie.space
       http:
-        paths:
+        paths: &shared_paths
           - path: /device-store
             pathType: Prefix
             backend:
@@ -45,3 +45,6 @@ spec:
                 name: huemie-ui
                 port:
                   number: 80
+    - host: app.huemie.local
+      http:
+        paths: *shared_paths
