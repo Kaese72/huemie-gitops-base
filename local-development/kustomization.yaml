@@ -27,16 +27,16 @@ images:
     newTag: v0.0.64-20260516212930-37c1eb7
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.6-20260513142459-dc6f81d
+    newTag: v0.0.6-20260516213147-68ee273
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
-    newTag: v0.0.20-20260318161718-3a5b4f1
+    newTag: v0.0.20-20260516213031-375be84
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
-    newTag: v0.0.20-20260318161718-3a5b4f1
+    newTag: v0.0.20-20260516213030-375be84
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
-    newTag: v0.0.1-20260513142429-701dcbb
+    newTag: v0.0.1-20260516213140-bb53f6e
   - name: ghcr.io/kaese72/ittt-orchestrator-migrater
     newName: ghcr.io/kaese72/ittt-orchestrator-migrater-development
-    newTag: v0.0.1-20260513142431-701dcbb
+    newTag: v0.0.1-20260516213139-bb53f6e
