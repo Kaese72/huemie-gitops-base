@@ -21,10 +21,10 @@ images:
     newTag: v0.0.2-20260516194445-de8fd6f
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
-    newTag: v0.0.64-20260516212931-37c1eb7
+    newTag: v0.0.64-20260516223720-01ba8c7
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
-    newTag: v0.0.64-20260516212930-37c1eb7
+    newTag: v0.0.64-20260516223720-01ba8c7
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
     newTag: v0.0.6-20260516213147-68ee273
@@ -33,7 +33,7 @@ images:
     newTag: v0.0.20-20260516213031-375be84
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
-    newTag: v0.0.20-20260516213030-375be84
+    newTag: v0.0.20-20260516223752-8f4447e
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
     newTag: v0.0.1-20260516213140-bb53f6e
