@@ -44,6 +44,12 @@ spec:
                 secretKeyRef:
                   name: device-store-secret
                   key: device-ingest.jwt-secret
+            - name: "AUTH_RSA_PUBLIC_KEY_PATH"
+              value: /etc/auth-pubkey/public.pem
+          volumeMounts:
+            - name: auth-pubkey
+              mountPath: /etc/auth-pubkey
+              readOnly: true
           ports:
             - containerPort: 8080
           resources:
@@ -53,6 +59,13 @@ spec:
             requests:
               cpu: 500m
               memory: 256M
+      volumes:
+        - name: auth-pubkey
+          secret:
+            secretName: auth-rsa-public-key
+            items:
+              - key: public.pem
+                path: public.pem
 ---
 apiVersion: batch/v1
 kind: Job

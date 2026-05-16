@@ -66,6 +66,19 @@ spec:
                 secretKeyRef:
                   name: adapter-attendant-secret
                   key: database.password
+            - name: AUTH_RSA_PUBLIC_KEY_PATH
+              value: /etc/auth-pubkey/public.pem
+          volumeMounts:
+            - name: auth-pubkey
+              mountPath: /etc/auth-pubkey
+              readOnly: true
+      volumes:
+        - name: auth-pubkey
+          secret:
+            secretName: auth-rsa-public-key
+            items:
+              - key: public.pem
+                path: public.pem
       serviceAccountName: adapter-attendant
 ---
 apiVersion: batch/v1
