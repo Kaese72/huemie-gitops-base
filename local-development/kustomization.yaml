@@ -30,13 +30,13 @@ images:
     newTag: v0.0.6-20260516213147-68ee273
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
-    newTag: v0.0.20-20260516213031-375be84
+    newTag: v0.0.20-20260516223754-8f4447e
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
     newTag: v0.0.20-20260516223752-8f4447e
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
-    newTag: v0.0.1-20260516213140-bb53f6e
+    newTag: v0.0.1-20260516223837-1919b69
   - name: ghcr.io/kaese72/ittt-orchestrator-migrater
     newName: ghcr.io/kaese72/ittt-orchestrator-migrater-development
-    newTag: v0.0.1-20260516213139-bb53f6e
+    newTag: v0.0.1-20260516223835-1919b69
