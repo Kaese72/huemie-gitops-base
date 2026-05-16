@@ -15,10 +15,10 @@ patchesJson6902:
 images:
   - name: ghcr.io/kaese72/authentication
     newName: ghcr.io/kaese72/authentication-development
-    newTag: v0.0.1-20260516000000-0000000
+    newTag: v0.0.2-20260516194447-de8fd6f
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.1-20260516000000-0000000
+    newTag: v0.0.2-20260516194445-de8fd6f
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
     newTag: v0.0.64-20260322211525-7322d97
