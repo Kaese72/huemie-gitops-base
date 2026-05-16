@@ -1,0 +1,128 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: authentication
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: authentication
+  template:
+    metadata:
+      labels:
+        app: authentication
+        huemie-owner: core
+    spec:
+      containers:
+        - name: authentication
+          image: ghcr.io/kaese72/authentication:v0.0.1
+          env:
+            - name: "DATABASE_HOST"
+              valueFrom:
+                configMapKeyRef:
+                  name: authentication-configmap
+                  key: database.host
+            - name: "DATABASE_USER"
+              valueFrom:
+                configMapKeyRef:
+                  name: authentication-configmap
+                  key: database.user
+            - name: "DATABASE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: authentication-secret
+                  key: database.password
+            - name: "AUTH_REFRESH_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: authentication-secret
+                  key: auth.refresh-secret
+            - name: "AUTH_RSA_PRIVATE_KEY_PATH"
+              value: /etc/authentication/private.pem
+          volumeMounts:
+            - name: rsa-key
+              mountPath: /etc/authentication
+              readOnly: true
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+      volumes:
+        - name: rsa-key
+          secret:
+            secretName: authentication-rsa-secret
+            items:
+              - key: private.pem
+                path: private.pem
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: authentication-migrater
+  labels:
+    app: authentication-migrater
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: authentication-migrater
+    spec:
+      containers:
+      - name: authentication-migrater
+        image: ghcr.io/kaese72/authentication-migrater:v0.0.1
+        imagePullPolicy: IfNotPresent
+        args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/authentication?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
+        env:
+          - name: "DATABASE_HOST"
+            valueFrom:
+              configMapKeyRef:
+                name: authentication-configmap
+                key: database.host
+          - name: "DATABASE_USER"
+            valueFrom:
+              configMapKeyRef:
+                name: authentication-configmap
+                key: database.user
+          - name: "DATABASE_PASSWORD"
+            valueFrom:
+              secretKeyRef:
+                name: authentication-secret
+                key: database.password
+        resources:
+          limits:
+            cpu: 250m
+            memory: 128M
+          requests:
+            cpu: 100m
+            memory: 128M
+      restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: authentication
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: authentication
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: authentication
+status:
+  loadBalancer: {}

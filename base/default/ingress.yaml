@@ -10,6 +10,13 @@ spec:
     - host: app.huemie.space
       http:
         paths: &shared_paths
+          - path: /authentication-service
+            pathType: Prefix
+            backend:
+              service:
+                name: authentication
+                port:
+                  number: 8080
           - path: /device-store
             pathType: Prefix
             backend:

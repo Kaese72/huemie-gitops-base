@@ -9,6 +9,10 @@ configMapGenerator:
     - adapters.device-store-url=http://device-store.huemie-local:8080
     - database.host=mariadb
     - database.user=user
+- name: authentication-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=user
 - name: device-store-configmap
   literals:
     - database.host=mariadb
@@ -24,6 +28,13 @@ secretGenerator:
   literals:
     - database.password=databaseuserpassword
     - adapters.device-store-jwt-secret=supersecretjwtsecret
+- name: authentication-secret
+  literals:
+    - database.password=databaseuserpassword
+    - auth.refresh-secret=supersecretrefreshsecret
+- name: authentication-rsa-secret
+  files:
+    - private.pem=authentication-private-key.pem
 - name: device-store-secret
   literals:
     - database.password=databaseuserpassword
