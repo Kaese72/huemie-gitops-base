@@ -28,6 +28,7 @@ spec:
           image: ghcr.io/kaese72/adapter-attendant:v0.0.18
           ports:
             - containerPort: 8080
+            - containerPort: 8081
           resources:
             limits:
               cpu: 250m
@@ -141,6 +142,24 @@ spec:
     - port: 8080
       protocol: TCP
       targetPort: 8080
+  selector:
+    app: adapter-attendant
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: adapter-attendant
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: adapter-attendant-internal
+spec:
+  ports:
+    - port: 8081
+      protocol: TCP
+      targetPort: 8081
   selector:
     app: adapter-attendant
 status:

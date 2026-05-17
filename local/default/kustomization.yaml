@@ -17,7 +17,6 @@ configMapGenerator:
   literals:
     - database.host=mariadb
     - database.user=user
-    - adapter-attendant.url=http://adapter-attendant:8080
 - name: ittt-orchestrator-configmap
   literals:
     - database.host=mariadb
