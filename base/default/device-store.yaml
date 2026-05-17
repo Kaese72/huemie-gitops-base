@@ -52,6 +52,7 @@ spec:
               readOnly: true
           ports:
             - containerPort: 8080
+            - containerPort: 8081
           resources:
             limits:
               cpu: 1000m
@@ -127,6 +128,24 @@ spec:
     - port: 8080
       protocol: TCP
       targetPort: 8080
+  selector:
+    app: device-store
+status:
+  loadBalancer: {}
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: device-store
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: device-store-internal
+spec:
+  ports:
+    - port: 8081
+      protocol: TCP
+      targetPort: 8081
   selector:
     app: device-store
 status:
