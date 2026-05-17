@@ -14,6 +14,7 @@ spec:
       labels:
         app: device-store
         huemie-owner: core
+        huemie.space/service-role: device-store
     spec:
       containers:
         - name: device-store
@@ -84,6 +85,7 @@ spec:
     metadata:
       labels:
         app: device-store-migrater
+        huemie.space/service-role: device-store
     spec:
       containers:
       - name: device-store-migrater
@@ -150,3 +152,82 @@ spec:
     app: device-store
 status:
   loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: device-store
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: device-store
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              huemie.space/namespace-role: adapters
+          podSelector:
+            matchLabels:
+              huemie.space/service-role: adapter
+      ports:
+        - port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: ittt-orchestrator
+      ports:
+        - port: 8081
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: adapter-attendant
+      ports:
+        - port: 8081
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              huemie.space/namespace-role: adapters
+          podSelector:
+            matchLabels:
+              huemie.space/service-role: adapter
+      ports:
+        - port: 8080
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: mariadb
+      ports:
+        - port: 3306
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: rabbitmq
+      ports:
+        - port: 5672

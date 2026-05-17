@@ -3,5 +3,7 @@ apiVersion: v1
 kind: Namespace
 metadata:
   name: adapters
+  labels:
+    huemie.space/namespace-role: adapters
   annotations:
     argocd.argoproj.io/sync-wave: "10"

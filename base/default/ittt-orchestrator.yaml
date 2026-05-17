@@ -14,6 +14,7 @@ spec:
       labels:
         app: ittt-orchestrator
         huemie-owner: core
+        huemie.space/service-role: ittt-orchestrator
     spec:
       containers:
         - name: ittt-orchestrator
@@ -79,6 +80,7 @@ spec:
       labels:
         app: ittt-orchestrator-rule-state
         huemie-owner: core
+        huemie.space/service-role: ittt-orchestrator
     spec:
       containers:
         - name: ittt-orchestrator-rule-state
@@ -129,6 +131,7 @@ spec:
     metadata:
       labels:
         app: ittt-orchestrator-migrater
+        huemie.space/service-role: ittt-orchestrator
     spec:
       containers:
         - name: ittt-orchestrator-migrater
@@ -177,3 +180,58 @@ spec:
     app: ittt-orchestrator
 status:
   loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: ittt-orchestrator
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: ittt-orchestrator
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: device-store
+      ports:
+        - port: 8081
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: mariadb
+      ports:
+        - port: 3306
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: rabbitmq
+      ports:
+        - port: 5672
