@@ -1,0 +1,15 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: huemie-cloud
+
+configMapGenerator:
+- name: cloud-connect-configmap
+  literals:
+    # The Host header value cloud nginx sets on all proxied traffic so the
+    # appliance-side ingress can route it. Must match an ingress rule hostname
+    # on the appliance cluster.
+    - internal.host=app.huemie.local
+
+resources:
+  - namespace.yaml
+  - ../../cloud-base/default

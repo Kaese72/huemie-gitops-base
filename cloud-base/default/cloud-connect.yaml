@@ -1,0 +1,107 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-connect
+  template:
+    metadata:
+      labels:
+        app: cloud-connect
+        huemie-owner: core
+        huemie.space/service-role: cloud-connect
+    spec:
+      containers:
+        - name: cloud-connect
+          image: ghcr.io/kaese72/cloud-connect-server:v0.0.1
+          env:
+            - name: CLOUD_CONNECT_INTERNAL_HOST
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: internal.host
+            - name: CLOUD_CONNECT_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-connect-secret
+                  key: auth
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 250m
+              memory: 64M
+            requests:
+              cpu: 50m
+              memory: 64M
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: cloud-connect
+  labels:
+    app: cloud-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: cloud-connect
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloud-connect-ingress
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  rules:
+    - host: apartment.humi.kaese.space
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cloud-connect
+                port:
+                  number: 8080
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cloud-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: cloud-connect
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    # Accept tunnel connections from the appliance and user traffic via the cloud ingress
+    - ports:
+        - port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP

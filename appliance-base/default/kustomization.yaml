@@ -1,6 +1,7 @@
 resources:
   - adapter-attendant.yaml
   - authentication.yaml
+  - cloud-connect.yaml
   - device-store.yaml
   - ittt-orchestrator.yaml
   - ui.yaml

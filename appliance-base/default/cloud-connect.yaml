@@ -1,0 +1,97 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-connect
+  template:
+    metadata:
+      labels:
+        app: cloud-connect
+        huemie-owner: core
+        huemie.space/service-role: cloud-connect
+    spec:
+      containers:
+        - name: cloud-connect
+          image: ghcr.io/kaese72/cloud-connect-client:v0.0.1
+          env:
+            - name: CLOUD_CONNECT_SERVER_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: server.url
+            - name: CLOUD_CONNECT_ALLOWED_HOST_PATTERN
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: allowed.host.pattern
+            - name: CLOUD_CONNECT_LOCAL_INGRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: local.ingress
+            - name: CLOUD_CONNECT_AUTH
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-connect-secret
+                  key: auth
+          resources:
+            limits:
+              cpu: 250m
+              memory: 64M
+            requests:
+              cpu: 50m
+              memory: 64M
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cloud-connect
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: cloud-connect
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress: []
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    # Outbound tunnel connection to the cloud server (HTTPS/WSS)
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.0.0.0/8
+              - 172.16.0.0/12
+              - 192.168.0.0/16
+      ports:
+        - port: 443
+    # Forward validated traffic to the local ingress (traefik)
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 80
