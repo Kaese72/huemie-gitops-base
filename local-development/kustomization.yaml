@@ -15,7 +15,7 @@ patchesJson6902:
 images:
   - name: ghcr.io/kaese72/cloud-connect-client
     newName: ghcr.io/kaese72/cloud-connect-client-development
-    newTag: v0.0.1-00000000000000-0000000
+    newTag: v0.0.1-20260623213146-088e062
   - name: ghcr.io/kaese72/authentication
     newName: ghcr.io/kaese72/authentication-development
     newTag: v0.0.2-20260516231525-bc081e1
