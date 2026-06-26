@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: authentication
-          image: ghcr.io/kaese72/authentication:v0.0.1
+          image: ghcr.io/kaese72/authentication:v0.0.2
           env:
             - name: "DATABASE_HOST"
               valueFrom:
