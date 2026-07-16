@@ -43,8 +43,8 @@ spec:
             - name: "DEVICE_INGEST_JWT_SECRET"
               valueFrom:
                 secretKeyRef:
-                  name: device-store-secret
-                  key: device-ingest.jwt-secret
+                  name: device-ingest-jwt-secret
+                  key: secret
             - name: "AUTH_RSA_PUBLIC_KEY_PATH"
               value: /etc/auth-pubkey/public.pem
           volumeMounts:

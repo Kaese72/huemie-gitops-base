@@ -51,8 +51,8 @@ spec:
             - name: ADAPTERS_DEVICE_STORE_JWT_SECRET
               valueFrom:
                 secretKeyRef:
-                  name: adapter-attendant-secret
-                  key: adapters.device-store-jwt-secret
+                  name: device-ingest-jwt-secret
+                  key: secret
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:

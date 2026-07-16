@@ -1,0 +1,102 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: device-ingest-jwt-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: device-ingest-jwt-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: device-ingest-jwt-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: device-ingest-jwt-bootstrap
+roleRef:
+  kind: Role
+  name: device-ingest-jwt-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: device-ingest-jwt-bootstrap
+  labels:
+    app: device-ingest-jwt-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: device-ingest-jwt-bootstrap
+        huemie.space/service-role: device-ingest-jwt-bootstrap
+    spec:
+      serviceAccountName: device-ingest-jwt-bootstrap
+      containers:
+        - name: create-secret
+          image: alpine/k8s:1.30.2
+          imagePullPolicy: IfNotPresent
+          # Idempotent: if the device-ingest JWT secret already exists, does nothing.
+          # If the legacy adapter-attendant-secret/device-store-secret keys exist
+          # (pre-migration deployment), the value is carried forward so adapters
+          # holding tokens signed with it keep validating instead of being cut
+          # over to a freshly generated secret they never received.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+              NEW_SECRET=device-ingest-jwt-secret
+              NEW_KEY=secret
+              OLD_SECRET_A=device-store-secret
+              OLD_KEY_A=device-ingest.jwt-secret
+              OLD_SECRET_B=adapter-attendant-secret
+              OLD_KEY_B=adapters.device-store-jwt-secret
+
+              if kubectl get secret "$NEW_SECRET" -n "$NAMESPACE" >/dev/null 2>&1; then
+                echo "device-ingest JWT secret already provisioned, skipping"
+                exit 0
+              fi
+
+              SECRET_VALUE=""
+              if kubectl get secret "$OLD_SECRET_A" -n "$NAMESPACE" >/dev/null 2>&1 && \
+                 kubectl get secret "$OLD_SECRET_A" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_A}" | grep -q .; then
+                echo "found legacy secret on $OLD_SECRET_A, carrying its value forward"
+                SECRET_VALUE=$(kubectl get secret "$OLD_SECRET_A" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_A}" | base64 -d)
+              elif kubectl get secret "$OLD_SECRET_B" -n "$NAMESPACE" >/dev/null 2>&1 && \
+                   kubectl get secret "$OLD_SECRET_B" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_B}" | grep -q .; then
+                echo "found legacy secret on $OLD_SECRET_B, carrying its value forward"
+                SECRET_VALUE=$(kubectl get secret "$OLD_SECRET_B" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_B}" | base64 -d)
+              else
+                echo "no legacy secret found, generating a new device-ingest JWT secret"
+                SECRET_VALUE=$(openssl rand -hex 32)
+              fi
+
+              kubectl create secret generic "$NEW_SECRET" -n "$NAMESPACE" --from-literal="$NEW_KEY=$SECRET_VALUE"
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+      restartPolicy: Never

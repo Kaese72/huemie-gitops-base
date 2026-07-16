@@ -26,7 +26,6 @@ secretGenerator:
 - name: adapter-attendant-secret
   literals:
     - database.password=databaseuserpassword
-    - adapters.device-store-jwt-secret=supersecretjwtsecret
 - name: authentication-secret
   literals:
     - database.password=databaseuserpassword
@@ -35,7 +34,6 @@ secretGenerator:
   literals:
     - database.password=databaseuserpassword
     - database.event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
-    - device-ingest.jwt-secret=supersecretjwtsecret
 - name: ittt-orchestrator-secret
   literals:
     - database.password=databaseuserpassword

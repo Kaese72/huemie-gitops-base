@@ -2,6 +2,7 @@ resources:
   - adapter-attendant.yaml
   - auth-keypair-bootstrap.yaml
   - authentication.yaml
+  - device-ingest-jwt-bootstrap.yaml
   - device-store.yaml
   - ittt-orchestrator.yaml
   - ui.yaml
