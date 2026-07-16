@@ -60,8 +60,11 @@ apiVersion: networking.k8s.io/v1
 kind: Ingress
 metadata:
   name: cloud-connect-ingress
+  labels:
+    app: cloud-connect-server
   annotations:
     argocd.argoproj.io/sync-wave: "70"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   rules:
     - host: apartment.humi.kaese.space
@@ -74,6 +77,10 @@ spec:
                 name: cloud-connect-server
                 port:
                   number: 8080
+  tls:
+    - hosts:
+        - apartment.humi.kaese.space
+      secretName: letsencrypt-prod
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
