@@ -88,7 +88,7 @@ spec:
                 SECRET_VALUE=$(kubectl get secret "$OLD_SECRET_B" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_B}" | base64 -d)
               else
                 echo "no legacy secret found, generating a new device-ingest JWT secret"
-                SECRET_VALUE=$(openssl rand -hex 32)
+                SECRET_VALUE=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
               fi
 
               kubectl create secret generic "$NEW_SECRET" -n "$NAMESPACE" --from-literal="$NEW_KEY=$SECRET_VALUE"
