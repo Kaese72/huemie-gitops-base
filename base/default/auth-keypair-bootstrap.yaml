@@ -49,17 +49,41 @@ spec:
         huemie.space/service-role: auth-keypair-bootstrap
     spec:
       serviceAccountName: auth-keypair-bootstrap
+      initContainers:
+        - name: generate-keypair
+          image: alpine/openssl:latest
+          imagePullPolicy: IfNotPresent
+          # Generates the authentication service's RSA signing keypair into a
+          # shared scratch volume. Always runs; the sibling container decides
+          # whether the result actually gets persisted as a Secret.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              openssl genrsa -out /keys/private.pem 4096
+              openssl rsa -in /keys/private.pem -pubout -out /keys/public.pem
+          volumeMounts:
+            - name: keys
+              mountPath: /keys
+          resources:
+            limits:
+              cpu: 250m
+              memory: 32M
+            requests:
+              cpu: 50m
+              memory: 16M
       containers:
-        - name: auth-keypair-bootstrap
+        - name: create-secrets
           image: alpine/k8s:1.30.2
           imagePullPolicy: IfNotPresent
-          # Generates the authentication service's RSA signing keypair on first
-          # deploy. Idempotent: if the new secrets already exist, does nothing.
+          # Idempotent: if the auth keypair secrets already exist, does nothing.
           # If the legacy authentication-rsa-secret/auth-rsa-public-key secrets
           # exist (pre-migration deployment), their values are carried forward
-          # as a matched pair instead of generating a new keypair - we only
-          # trust them when BOTH are present, since mixing an old key half with
-          # a freshly generated other half would produce a broken pair.
+          # as a matched pair instead of the freshly generated keypair - we
+          # only trust them when BOTH are present, since mixing an old key
+          # half with a freshly generated other half would produce a broken
+          # (non-matching) keypair.
           command:
             - /bin/sh
             - -c
@@ -78,29 +102,35 @@ spec:
                 exit 0
               fi
 
-              WORKDIR=$(mktemp -d)
-              cd "$WORKDIR"
+              PRIVATE_SRC=/keys/private.pem
+              PUBLIC_SRC=/keys/public.pem
 
               if kubectl get secret "$OLD_PRIVATE_SECRET" -n "$NAMESPACE" >/dev/null 2>&1 && \
                  kubectl get secret "$OLD_PUBLIC_SECRET" -n "$NAMESPACE" >/dev/null 2>&1; then
                 echo "found legacy auth-rsa secrets, carrying their values forward"
-                kubectl get secret "$OLD_PRIVATE_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.private\.pem}' | base64 -d > private.pem
-                kubectl get secret "$OLD_PUBLIC_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.public\.pem}' | base64 -d > public.pem
+                WORKDIR=$(mktemp -d)
+                kubectl get secret "$OLD_PRIVATE_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.private\.pem}' | base64 -d > "$WORKDIR/private.pem"
+                kubectl get secret "$OLD_PUBLIC_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.public\.pem}' | base64 -d > "$WORKDIR/public.pem"
+                PRIVATE_SRC="$WORKDIR/private.pem"
+                PUBLIC_SRC="$WORKDIR/public.pem"
               else
-                echo "no legacy secrets found, generating a fresh RSA keypair"
-                openssl genrsa -out private.pem 4096
-                openssl rsa -in private.pem -pubout -out public.pem
+                echo "no legacy secrets found, using freshly generated keypair"
               fi
 
-              kubectl create secret generic "$NEW_PRIVATE_SECRET" -n "$NAMESPACE" --from-file=private.pem=private.pem
-              kubectl create secret generic "$NEW_PUBLIC_SECRET" -n "$NAMESPACE" --from-file=public.pem=public.pem
-
-              rm -rf "$WORKDIR"
+              kubectl create secret generic "$NEW_PRIVATE_SECRET" -n "$NAMESPACE" --from-file=private.pem="$PRIVATE_SRC"
+              kubectl create secret generic "$NEW_PUBLIC_SECRET" -n "$NAMESPACE" --from-file=public.pem="$PUBLIC_SRC"
+          volumeMounts:
+            - name: keys
+              mountPath: /keys
+              readOnly: true
           resources:
             limits:
-              cpu: 250m
-              memory: 64M
-            requests:
-              cpu: 50m
+              cpu: 100m
               memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+      volumes:
+        - name: keys
+          emptyDir: {}
       restartPolicy: Never
