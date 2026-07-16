@@ -41,5 +41,5 @@ secretGenerator:
 
 resources:
  - namespace.yaml
- - ../../base/default
+ - ../../../base/default
  - ../3pp
