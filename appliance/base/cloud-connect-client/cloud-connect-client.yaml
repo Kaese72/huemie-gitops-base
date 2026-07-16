@@ -85,7 +85,10 @@ spec:
               - 192.168.0.0/16
       ports:
         - port: 443
-    # Forward validated traffic to the local ingress (traefik)
+    # Forward validated traffic to the local ingress (traefik).
+    # NetworkPolicy ports match the pod's real containerPort, not the Service
+    # port - traefik's Service maps port 80 -> targetPort "web" (containerPort
+    # 8000), so the policy has to say "web", not 80, or it silently never matches.
     - to:
         - namespaceSelector:
             matchLabels:
@@ -94,4 +97,4 @@ spec:
             matchLabels:
               app.kubernetes.io/name: traefik
       ports:
-        - port: 80
+        - port: web
