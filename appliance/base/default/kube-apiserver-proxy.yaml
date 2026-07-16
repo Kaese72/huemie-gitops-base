@@ -1,0 +1,90 @@
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-apiserver-proxy
+  template:
+    metadata:
+      labels:
+        app: kube-apiserver-proxy
+        huemie-owner: core
+        huemie.space/service-role: kube-apiserver-proxy
+    spec:
+      serviceAccountName: kube-apiserver-proxy
+      containers:
+        - name: socat
+          image: alpine/socat:latest
+          # Plain TCP relay to the apiserver's ClusterIP - no TLS termination, so callers'
+          # own ServiceAccount tokens and the apiserver's cert flow through untouched and
+          # RBAC is enforced exactly as if they connected directly. Uses the ClusterIP (via
+          # the auto-injected KUBERNETES_SERVICE_HOST/PORT) rather than the real node
+          # address so this stays correct if the control plane ever moves.
+          command: ["sh", "-c"]
+          args:
+            - "exec socat TCP-LISTEN:6443,fork,reuseaddr TCP:${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+          ports:
+            - containerPort: 6443
+          resources:
+            limits:
+              cpu: 50m
+              memory: 32Mi
+            requests:
+              cpu: 10m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: kube-apiserver-proxy
+spec:
+  ports:
+    - port: 6443
+      protocol: TCP
+      targetPort: 6443
+  selector:
+    app: kube-apiserver-proxy
+status:
+  loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: kube-apiserver-proxy
+  policyTypes:
+    - Ingress
+  # No Egress policyType here deliberately: its outbound leg to the real apiserver hits
+  # the same ClusterIP/DNAT-vs-NetworkPolicy problem this proxy exists to work around, and
+  # there's no pod-backed target to restrict it to. Leaving Egress unrestricted confines
+  # that exposure to this one small, single-purpose, auditable component instead of every
+  # service that needs API access.
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: adapter-attendant
+      ports:
+        - port: 6443

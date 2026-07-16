@@ -5,5 +5,6 @@ resources:
   - device-ingest-jwt-bootstrap.yaml
   - device-store.yaml
   - ittt-orchestrator.yaml
+  - kube-apiserver-proxy.yaml
   - ui.yaml
   - ingress.yaml

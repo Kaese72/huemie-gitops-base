@@ -24,6 +24,7 @@ spec:
         huemie-owner: core
         huemie.space/service-role: adapter-attendant
     spec:
+      enableServiceLinks: false
       containers:
         - name: adapter-attendant
           image: ghcr.io/kaese72/adapter-attendant:v0.0.18
@@ -38,6 +39,19 @@ spec:
               cpu: 100m
               memory: 256M
           env:
+            # in-cluster client config normally talks to the apiserver's ClusterIP directly,
+            # but NetworkPolicy can't reliably restrict egress to a ClusterIP (kube-proxy's
+            # DNAT to the real backend happens before NetworkPolicy is enforced). Route
+            # through kube-apiserver-proxy instead, which is a real pod and so can be
+            # reached with a reliably-enforceable podSelector egress rule. enableServiceLinks
+            # is disabled above so these explicit values aren't raced against the
+            # auto-injected ones.
+            - name: KUBERNETES_SERVICE_HOST
+              value: kube-apiserver-proxy
+            - name: KUBERNETES_SERVICE_PORT
+              value: "6443"
+            - name: KUBERNETES_SERVICE_PORT_HTTPS
+              value: "6443"
             - name: KUBERNETES_ADAPTER_NAMESPACE
               valueFrom:
                 configMapKeyRef:
@@ -216,7 +230,8 @@ spec:
       ports:
         - port: 3306
     - to:
-        - ipBlock:
-            cidr: 10.43.0.1/32
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: kube-apiserver-proxy
       ports:
-        - port: 443
+        - port: 6443
