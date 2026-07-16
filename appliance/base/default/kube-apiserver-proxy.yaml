@@ -26,18 +26,16 @@ spec:
     spec:
       serviceAccountName: kube-apiserver-proxy
       containers:
-        - name: socat
-          image: alpine/socat:latest
-          # Plain TCP relay to the apiserver's ClusterIP - no TLS termination, so callers'
+        - name: kube-apiserver-connect-proxy
+          image: ghcr.io/kaese72/kube-apiserver-connect-proxy:v0.0.1
+          # HTTP CONNECT proxy, not a plain TCP relay: it never terminates TLS, so callers'
           # own ServiceAccount tokens and the apiserver's cert flow through untouched and
-          # RBAC is enforced exactly as if they connected directly. Uses the ClusterIP (via
-          # the auto-injected KUBERNETES_SERVICE_HOST/PORT) rather than the real node
-          # address so this stays correct if the control plane ever moves.
-          command: ["sh", "-c"]
-          args:
-            - "exec socat TCP-LISTEN:6443,fork,reuseaddr TCP:${KUBERNETES_SERVICE_HOST}:${KUBERNETES_SERVICE_PORT}"
+          # RBAC is enforced exactly as if they connected directly. It only ever tunnels to
+          # the address it discovers via its own auto-injected KUBERNETES_SERVICE_HOST/PORT,
+          # so this stays correct if the control plane ever moves, and it refuses to CONNECT
+          # anywhere else.
           ports:
-            - containerPort: 6443
+            - containerPort: 8080
           resources:
             limits:
               cpu: 50m
@@ -58,7 +56,7 @@ spec:
   ports:
     - port: 6443
       protocol: TCP
-      targetPort: 6443
+      targetPort: 8080
   selector:
     app: kube-apiserver-proxy
 status:
