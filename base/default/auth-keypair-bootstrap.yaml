@@ -51,7 +51,7 @@ spec:
       serviceAccountName: auth-keypair-bootstrap
       initContainers:
         - name: generate-keypair
-          image: alpine/openssl:latest
+          image: alpine/openssl:3.5.7
           imagePullPolicy: IfNotPresent
           # Generates the authentication service's RSA signing keypair into a
           # shared scratch volume. Always runs; the sibling container decides
