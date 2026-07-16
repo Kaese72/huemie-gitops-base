@@ -85,4 +85,4 @@ spec:
             matchLabels:
               huemie.space/service-role: adapter-attendant
       ports:
-        - port: 6443
+        - port: 8080

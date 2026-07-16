@@ -230,4 +230,4 @@ spec:
             matchLabels:
               huemie.space/service-role: kube-apiserver-proxy
       ports:
-        - port: 6443
+        - port: 8080
