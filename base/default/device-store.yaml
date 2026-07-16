@@ -64,7 +64,7 @@ spec:
       volumes:
         - name: auth-pubkey
           secret:
-            secretName: auth-rsa-public-key
+            secretName: auth-rsa-verify-key
             items:
               - key: public.pem
                 path: public.pem

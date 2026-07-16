@@ -58,7 +58,7 @@ spec:
       volumes:
         - name: rsa-key
           secret:
-            secretName: authentication-rsa-secret
+            secretName: auth-rsa-signing-key
             items:
               - key: private.pem
                 path: private.pem

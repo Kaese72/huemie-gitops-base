@@ -31,12 +31,6 @@ secretGenerator:
   literals:
     - database.password=databaseuserpassword
     - auth.refresh-secret=supersecretrefreshsecret
-- name: authentication-rsa-secret
-  files:
-    - private.pem=authentication-private-key.pem
-- name: auth-rsa-public-key
-  files:
-    - public.pem=authentication-public-key.pem
 - name: device-store-secret
   literals:
     - database.password=databaseuserpassword

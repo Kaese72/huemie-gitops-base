@@ -1,0 +1,106 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: auth-keypair-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: auth-keypair-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "list", "create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: auth-keypair-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: auth-keypair-bootstrap
+roleRef:
+  kind: Role
+  name: auth-keypair-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: auth-keypair-bootstrap
+  labels:
+    app: auth-keypair-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: auth-keypair-bootstrap
+        huemie.space/service-role: auth-keypair-bootstrap
+    spec:
+      serviceAccountName: auth-keypair-bootstrap
+      containers:
+        - name: auth-keypair-bootstrap
+          image: alpine/k8s:1.30.2
+          imagePullPolicy: IfNotPresent
+          # Generates the authentication service's RSA signing keypair on first
+          # deploy. Idempotent: if the new secrets already exist, does nothing.
+          # If the legacy authentication-rsa-secret/auth-rsa-public-key secrets
+          # exist (pre-migration deployment), their values are carried forward
+          # as a matched pair instead of generating a new keypair - we only
+          # trust them when BOTH are present, since mixing an old key half with
+          # a freshly generated other half would produce a broken pair.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+              NEW_PRIVATE_SECRET=auth-rsa-signing-key
+              NEW_PUBLIC_SECRET=auth-rsa-verify-key
+              OLD_PRIVATE_SECRET=authentication-rsa-secret
+              OLD_PUBLIC_SECRET=auth-rsa-public-key
+
+              if kubectl get secret "$NEW_PRIVATE_SECRET" -n "$NAMESPACE" >/dev/null 2>&1 && \
+                 kubectl get secret "$NEW_PUBLIC_SECRET" -n "$NAMESPACE" >/dev/null 2>&1; then
+                echo "auth keypair already provisioned, skipping"
+                exit 0
+              fi
+
+              WORKDIR=$(mktemp -d)
+              cd "$WORKDIR"
+
+              if kubectl get secret "$OLD_PRIVATE_SECRET" -n "$NAMESPACE" >/dev/null 2>&1 && \
+                 kubectl get secret "$OLD_PUBLIC_SECRET" -n "$NAMESPACE" >/dev/null 2>&1; then
+                echo "found legacy auth-rsa secrets, carrying their values forward"
+                kubectl get secret "$OLD_PRIVATE_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.private\.pem}' | base64 -d > private.pem
+                kubectl get secret "$OLD_PUBLIC_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.public\.pem}' | base64 -d > public.pem
+              else
+                echo "no legacy secrets found, generating a fresh RSA keypair"
+                openssl genrsa -out private.pem 4096
+                openssl rsa -in private.pem -pubout -out public.pem
+              fi
+
+              kubectl create secret generic "$NEW_PRIVATE_SECRET" -n "$NAMESPACE" --from-file=private.pem=private.pem
+              kubectl create secret generic "$NEW_PUBLIC_SECRET" -n "$NAMESPACE" --from-file=public.pem=public.pem
+
+              rm -rf "$WORKDIR"
+          resources:
+            limits:
+              cpu: 250m
+              memory: 64M
+            requests:
+              cpu: 50m
+              memory: 32M
+      restartPolicy: Never
