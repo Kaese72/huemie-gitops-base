@@ -3,6 +3,11 @@ kind: Kustomization
 namespace: huemie-local
 
 configMapGenerator:
+- name: cloud-connect-configmap
+  literals:
+    - server.url=https://apartment.humi.kaese.space/cloud-connect/v0/tunnel
+    - allowed.host.pattern=app\.huemie\.local
+    - local.ingress=traefik.kube-system.svc.cluster.local:80
 - name: adapter-attendant-configmap
   literals:
     - adapter.namespace=adapters
@@ -42,4 +47,5 @@ secretGenerator:
 resources:
  - namespace.yaml
  - ../../../base/default
+ - ../../../base/cloud-connect-client
  - ../3pp
