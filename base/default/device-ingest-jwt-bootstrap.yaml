@@ -14,7 +14,11 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "create"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["device-ingest-jwt-secret"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -54,10 +58,6 @@ spec:
           image: alpine/k8s:1.30.2
           imagePullPolicy: IfNotPresent
           # Idempotent: if the device-ingest JWT secret already exists, does nothing.
-          # If the legacy adapter-attendant-secret/device-store-secret keys exist
-          # (pre-migration deployment), the value is carried forward so adapters
-          # holding tokens signed with it keep validating instead of being cut
-          # over to a freshly generated secret they never received.
           command:
             - /bin/sh
             - -c
@@ -67,30 +67,13 @@ spec:
               NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
               NEW_SECRET=device-ingest-jwt-secret
               NEW_KEY=secret
-              OLD_SECRET_A=device-store-secret
-              OLD_KEY_A=device-ingest.jwt-secret
-              OLD_SECRET_B=adapter-attendant-secret
-              OLD_KEY_B=adapters.device-store-jwt-secret
 
               if kubectl get secret "$NEW_SECRET" -n "$NAMESPACE" >/dev/null 2>&1; then
                 echo "device-ingest JWT secret already provisioned, skipping"
                 exit 0
               fi
 
-              SECRET_VALUE=""
-              if kubectl get secret "$OLD_SECRET_A" -n "$NAMESPACE" >/dev/null 2>&1 && \
-                 kubectl get secret "$OLD_SECRET_A" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_A}" | grep -q .; then
-                echo "found legacy secret on $OLD_SECRET_A, carrying its value forward"
-                SECRET_VALUE=$(kubectl get secret "$OLD_SECRET_A" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_A}" | base64 -d)
-              elif kubectl get secret "$OLD_SECRET_B" -n "$NAMESPACE" >/dev/null 2>&1 && \
-                   kubectl get secret "$OLD_SECRET_B" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_B}" | grep -q .; then
-                echo "found legacy secret on $OLD_SECRET_B, carrying its value forward"
-                SECRET_VALUE=$(kubectl get secret "$OLD_SECRET_B" -n "$NAMESPACE" -o jsonpath="{.data.$OLD_KEY_B}" | base64 -d)
-              else
-                echo "no legacy secret found, generating a new device-ingest JWT secret"
-                SECRET_VALUE=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
-              fi
-
+              SECRET_VALUE=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
               kubectl create secret generic "$NEW_SECRET" -n "$NAMESPACE" --from-literal="$NEW_KEY=$SECRET_VALUE"
           resources:
             limits:

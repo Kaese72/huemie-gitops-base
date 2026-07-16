@@ -14,7 +14,11 @@ metadata:
 rules:
   - apiGroups: [""]
     resources: ["secrets"]
-    verbs: ["get", "list", "create"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["auth-rsa-signing-key", "auth-rsa-verify-key"]
+    verbs: ["get"]
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: RoleBinding
@@ -78,12 +82,6 @@ spec:
           image: alpine/k8s:1.30.2
           imagePullPolicy: IfNotPresent
           # Idempotent: if the auth keypair secrets already exist, does nothing.
-          # If the legacy authentication-rsa-secret/auth-rsa-public-key secrets
-          # exist (pre-migration deployment), their values are carried forward
-          # as a matched pair instead of the freshly generated keypair - we
-          # only trust them when BOTH are present, since mixing an old key
-          # half with a freshly generated other half would produce a broken
-          # (non-matching) keypair.
           command:
             - /bin/sh
             - -c
@@ -93,8 +91,6 @@ spec:
               NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
               NEW_PRIVATE_SECRET=auth-rsa-signing-key
               NEW_PUBLIC_SECRET=auth-rsa-verify-key
-              OLD_PRIVATE_SECRET=authentication-rsa-secret
-              OLD_PUBLIC_SECRET=auth-rsa-public-key
 
               if kubectl get secret "$NEW_PRIVATE_SECRET" -n "$NAMESPACE" >/dev/null 2>&1 && \
                  kubectl get secret "$NEW_PUBLIC_SECRET" -n "$NAMESPACE" >/dev/null 2>&1; then
@@ -102,23 +98,8 @@ spec:
                 exit 0
               fi
 
-              PRIVATE_SRC=/keys/private.pem
-              PUBLIC_SRC=/keys/public.pem
-
-              if kubectl get secret "$OLD_PRIVATE_SECRET" -n "$NAMESPACE" >/dev/null 2>&1 && \
-                 kubectl get secret "$OLD_PUBLIC_SECRET" -n "$NAMESPACE" >/dev/null 2>&1; then
-                echo "found legacy auth-rsa secrets, carrying their values forward"
-                WORKDIR=$(mktemp -d)
-                kubectl get secret "$OLD_PRIVATE_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.private\.pem}' | base64 -d > "$WORKDIR/private.pem"
-                kubectl get secret "$OLD_PUBLIC_SECRET" -n "$NAMESPACE" -o jsonpath='{.data.public\.pem}' | base64 -d > "$WORKDIR/public.pem"
-                PRIVATE_SRC="$WORKDIR/private.pem"
-                PUBLIC_SRC="$WORKDIR/public.pem"
-              else
-                echo "no legacy secrets found, using freshly generated keypair"
-              fi
-
-              kubectl create secret generic "$NEW_PRIVATE_SECRET" -n "$NAMESPACE" --from-file=private.pem="$PRIVATE_SRC"
-              kubectl create secret generic "$NEW_PUBLIC_SECRET" -n "$NAMESPACE" --from-file=public.pem="$PUBLIC_SRC"
+              kubectl create secret generic "$NEW_PRIVATE_SECRET" -n "$NAMESPACE" --from-file=private.pem=/keys/private.pem
+              kubectl create secret generic "$NEW_PUBLIC_SECRET" -n "$NAMESPACE" --from-file=public.pem=/keys/public.pem
           volumeMounts:
             - name: keys
               mountPath: /keys
