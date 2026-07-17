@@ -79,7 +79,7 @@ spec:
               memory: 16M
       containers:
         - name: create-secrets
-          image: alpine/k8s:1.30.2
+          image: alpine/k8s:1.36.2
           imagePullPolicy: IfNotPresent
           # Idempotent: if the auth keypair secrets already exist, does nothing.
           command:
