@@ -55,7 +55,7 @@ spec:
       serviceAccountName: device-ingest-jwt-bootstrap
       containers:
         - name: create-secret
-          image: alpine/k8s:1.30.2
+          image: alpine/k8s:1.36.2
           imagePullPolicy: IfNotPresent
           # Idempotent: if the device-ingest JWT secret already exists, does nothing.
           command:
