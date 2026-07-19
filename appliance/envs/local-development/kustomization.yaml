@@ -7,10 +7,10 @@ resources:
 images:
   - name: ghcr.io/kaese72/authentication
     newName: ghcr.io/kaese72/authentication-development
-    newTag: v0.0.2-20260718122543-85c672b
+    newTag: v0.0.2-20260719145056-2677645
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.2-20260718122545-85c672b
+    newTag: v0.0.2-20260719145057-2677645
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
     newTag: v0.0.64-20260614163101-567f3d3
@@ -19,7 +19,7 @@ images:
     newTag: v0.0.64-20260614163101-567f3d3
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.6-20260718122612-74e6963
+    newTag: v0.0.6-20260719145124-e8d9aac
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
     newTag: v0.0.20-20260517100140-a2bebb4
