@@ -70,7 +70,13 @@ spec:
     spec:
       containers:
       - name: mariadb
-        image: mariadb:latest
+        # Pinned to match the version this instance's PVC was originally
+        # initialized with (11.7.2). Was previously `mariadb:latest`, which
+        # silently drifted to 12.3.2 and broke every database on this
+        # instance until `mariadb-upgrade` was run by hand -- don't move
+        # this forward without also running `mariadb-upgrade` against the
+        # live pod (or accepting a PVC wipe) as part of the same change.
+        image: mariadb:11.7.2
         ports:
         - containerPort: 3306
         volumeMounts:
