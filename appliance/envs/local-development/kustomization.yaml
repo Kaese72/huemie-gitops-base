@@ -7,19 +7,19 @@ resources:
 images:
   - name: ghcr.io/kaese72/authentication
     newName: ghcr.io/kaese72/authentication-development
-    newTag: v0.0.2-20260516231525-bc081e1
+    newTag: v0.0.2-20260730212903-d658738
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.2-20260516231529-bc081e1
+    newTag: v0.0.2-20260730212906-d658738
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
-    newTag: v0.0.64-20260614163101-567f3d3
+    newTag: v0.0.64-20260726140502-d3c9872
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
-    newTag: v0.0.64-20260614163101-567f3d3
+    newTag: v0.0.64-20260726140504-d3c9872
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.6-20260614171139-2d347f3
+    newTag: v0.0.6-20260730214045-1b30210
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
     newTag: v0.0.20-20260517100140-a2bebb4
@@ -28,7 +28,7 @@ images:
     newTag: v0.0.20-20260517100139-a2bebb4
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
-    newTag: v0.0.1-20260517085530-50f7d3c
+    newTag: v0.0.1-20260730213019-eb691a3
   - name: ghcr.io/kaese72/ittt-orchestrator-migrater
     newName: ghcr.io/kaese72/ittt-orchestrator-migrater-development
-    newTag: v0.0.1-20260517085530-50f7d3c
+    newTag: v0.0.1-20260730213012-eb691a3
