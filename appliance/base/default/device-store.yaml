@@ -191,6 +191,12 @@ spec:
               huemie.space/service-role: ittt-orchestrator
       ports:
         - port: 8081
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: chatbot
+      ports:
+        - port: 8080
   egress:
     - to:
         - namespaceSelector:

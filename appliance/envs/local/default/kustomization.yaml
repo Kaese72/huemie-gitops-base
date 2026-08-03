@@ -26,6 +26,12 @@ configMapGenerator:
   literals:
     - database.host=mariadb
     - database.user=user
+- name: chatbot-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=user
+    - device-store.url=http://device-store.huemie-local:8080
+    - anthropic.model=claude-opus-5
 
 secretGenerator:
 - name: adapter-attendant-secret
@@ -43,6 +49,18 @@ secretGenerator:
   literals:
     - database.password=databaseuserpassword
     - event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
+- name: chatbot-secret
+  literals:
+    # Real, working local values -- same shared MariaDB/RabbitMQ every
+    # other service in this overlay uses.
+    - database.password=databaseuserpassword
+    - event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
+    # Chatbot-specific secrets -- these are NOT usable as-is. Replace
+    # before scaling the chatbot Deployment above 0 replicas:
+    #   - device-store.jwt: a JWT for the bot's own device-store user
+    #   - anthropic.api-key: a real key from console.anthropic.com
+    - device-store.jwt=REPLACE_ME_DEVICE_STORE_JWT
+    - anthropic.api-key=REPLACE_ME_ANTHROPIC_API_KEY
 
 resources:
  - namespace.yaml
