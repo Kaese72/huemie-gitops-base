@@ -210,3 +210,13 @@ spec:
               huemie.space/service-role: rabbitmq
       ports:
         - port: 5672
+    # Outbound to the LLM provider (Anthropic Messages API), same shape as
+    # the adapters' egress rule for reaching external device hubs: allow
+    # everywhere except the cluster's own pod/service CIDRs, rather than
+    # pinning to Anthropic's IP ranges, which aren't published/stable.
+    - to:
+        - ipBlock:
+            cidr: 0.0.0.0/0
+            except:
+              - 10.42.0.0/16
+              - 10.43.0.0/16
