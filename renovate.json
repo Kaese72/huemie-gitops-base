@@ -34,6 +34,28 @@
                 "base/.*.yaml"
             ],
             "groupName": "base-images"
+        },
+        {
+            "matchDatasources": [
+                "docker"
+            ],
+            "matchPackageNames": [
+                "ghcr.io/kaese72/adapter-attendant",
+                "ghcr.io/kaese72/adapter-attendant-migrater",
+                "ghcr.io/kaese72/authentication",
+                "ghcr.io/kaese72/authentication-migrater",
+                "ghcr.io/kaese72/chatbot",
+                "ghcr.io/kaese72/chatbot-migrater",
+                "ghcr.io/kaese72/cloud-connect-client",
+                "ghcr.io/kaese72/device-store",
+                "ghcr.io/kaese72/device-store-migrater",
+                "ghcr.io/kaese72/huemie-ui",
+                "ghcr.io/kaese72/ittt-orchestrator",
+                "ghcr.io/kaese72/ittt-orchestrator-migrater",
+                "ghcr.io/kaese72/kube-apiserver-connect-proxy"
+            ],
+            "groupName": "own-service-images",
+            "automerge": true
         }
     ]
 }
