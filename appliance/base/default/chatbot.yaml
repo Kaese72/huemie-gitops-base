@@ -5,9 +5,11 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "50"
 spec:
-  # Deliberately 0 until the chatbot-specific secrets (device-store.jwt,
-  # anthropic.api-key) are filled in with real values in the env overlay --
-  # see appliance/envs/local/default/kustomization.yaml.
+  # Deliberately 0 until the chatbot-specific secret (device-store.jwt) is
+  # filled in with a real value in the env overlay -- see
+  # appliance/envs/local/default/kustomization.yaml. The Anthropic API key
+  # is no longer a deploy-time secret: it is configured at runtime via the
+  # /chatbot-service/v0/api-keys endpoints and stored in the database.
   replicas: 0
   selector:
     matchLabels:
@@ -53,11 +55,6 @@ spec:
                 secretKeyRef:
                   name: chatbot-secret
                   key: device-store.jwt
-            - name: "ANTHROPIC_API_KEY"
-              valueFrom:
-                secretKeyRef:
-                  name: chatbot-secret
-                  key: anthropic.api-key
             - name: "ANTHROPIC_MODEL"
               valueFrom:
                 configMapKeyRef:
