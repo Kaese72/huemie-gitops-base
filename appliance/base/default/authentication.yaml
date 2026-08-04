@@ -152,6 +152,12 @@ spec:
               app.kubernetes.io/name: traefik
       ports:
         - port: 8080
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: chatbot
+      ports:
+        - port: 8080
   egress:
     - to:
         - namespaceSelector:

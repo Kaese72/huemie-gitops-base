@@ -32,6 +32,7 @@ configMapGenerator:
     - database.user=user
     - device-store.url=http://device-store.huemie-local:8080
     - anthropic.model=claude-opus-5
+    - authentication.url=http://authentication.huemie-local:8080
 
 secretGenerator:
 - name: adapter-attendant-secret
@@ -55,12 +56,10 @@ secretGenerator:
     # other service in this overlay uses.
     - database.password=databaseuserpassword
     - event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
-    # Chatbot-specific secret -- NOT usable as-is. Replace before scaling
-    # the chatbot Deployment above 0 replicas:
-    #   - device-store.jwt: a JWT for the bot's own device-store user
-    # The Anthropic API key is no longer deploy-time config -- once the
-    # chatbot is running, add one via POST /chatbot-service/v0/api-keys.
-    - device-store.jwt=REPLACE_ME_DEVICE_STORE_JWT
+    # Neither the Anthropic API key nor the device-store credential is
+    # deploy-time config: once chatbot is running, add an Anthropic key via
+    # POST /chatbot-service/v0/api-keys, and set up its own device-store
+    # identity via POST /chatbot-service/v0/identities/setup.
 
 resources:
  - namespace.yaml

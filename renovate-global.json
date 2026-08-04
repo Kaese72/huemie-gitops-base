@@ -1,5 +1,12 @@
 {
     "repositories": [
         "Kaese72/huemie-gitops-base"
+    ],
+    "fetchChangeLogs": "off",
+    "hostRules": [
+        {
+            "matchHost": "api.github.com",
+            "concurrentRequestLimit": 2
+        }
     ]
 }
