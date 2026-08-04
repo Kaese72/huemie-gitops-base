@@ -45,6 +45,13 @@ spec:
                 name: adapter-attendant
                 port:
                   number: 8080
+          - path: /chatbot-service
+            pathType: Prefix
+            backend:
+              service:
+                name: chatbot
+                port:
+                  number: 8080
           - path: /
             pathType: Prefix
             backend:
