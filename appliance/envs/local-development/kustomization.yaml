@@ -19,7 +19,7 @@ images:
     newTag: v0.0.64-20260815112426-26a3086
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.6-20260804190312-fe82a29
+    newTag: v0.0.6-20260815112544-2babb72
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
     newTag: v0.0.20-20260517100140-a2bebb4
