@@ -76,7 +76,7 @@ spec:
         # instance until `mariadb-upgrade` was run by hand -- don't move
         # this forward without also running `mariadb-upgrade` against the
         # live pod (or accepting a PVC wipe) as part of the same change.
-        image: mariadb:11.7.2
+        image: mariadb:11.8.9
         ports:
         - containerPort: 3306
         volumeMounts:
