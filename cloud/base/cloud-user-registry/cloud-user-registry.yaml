@@ -1,0 +1,242 @@
+# Provisions cloud-user-registry's own database and user against the
+# shared MariaDB instance managed by hallen-gitops-base (instance-mariadb,
+# namespace "data"). CRDs come from hallen-gitops-base/operator-mariadb-operator.
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Database
+metadata:
+  name: cloud-user-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: clouduserregistry
+  mariaDbRef:
+    name: mariadb
+    namespace: data
+  characterSet: utf8
+  collate: utf8_general_ci
+  cleanupPolicy: Skip
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: User
+metadata:
+  name: cloud-user-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: cloud-user-registry
+  mariaDbRef:
+    name: mariadb
+    namespace: data
+  passwordSecretKeyRef:
+    name: cloud-user-registry-secret
+    key: database.password
+  host: "%"
+  cleanupPolicy: Skip
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Grant
+metadata:
+  name: cloud-user-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  mariaDbRef:
+    name: mariadb
+    namespace: data
+  privileges:
+    - "ALL PRIVILEGES"
+  database: "clouduserregistry"
+  table: "*"
+  username: cloud-user-registry
+  host: "%"
+  cleanupPolicy: Skip
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: cloud-user-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: cloud-user-registry
+  template:
+    metadata:
+      labels:
+        app: cloud-user-registry
+        huemie-owner: core
+        huemie.space/service-role: cloud-user-registry
+    spec:
+      containers:
+        - name: cloud-user-registry
+          image: ghcr.io/kaese72/cloud-user-registry:v0.0.3
+          env:
+            - name: "DATABASE_HOST"
+              value: "mariadb.data.svc.cluster.local"
+            - name: "DATABASE_USER"
+              value: "cloud-user-registry"
+            - name: "DATABASE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: database.password
+            - name: "AUTH_REFRESH_SECRET"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: auth.refresh-secret
+            - name: "AUTH_RSA_PRIVATE_KEY_PATH"
+              value: /etc/cloud-user-registry/private.pem
+          volumeMounts:
+            - name: rsa-key
+              mountPath: /etc/cloud-user-registry
+              readOnly: true
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 500m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+      volumes:
+        - name: rsa-key
+          secret:
+            secretName: cloud-user-registry-rsa-signing-key
+            items:
+              - key: private.pem
+                path: private.pem
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cloud-user-registry-migrater
+  labels:
+    app: cloud-user-registry-migrater
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: cloud-user-registry-migrater
+        huemie.space/service-role: cloud-user-registry
+    spec:
+      containers:
+      - name: cloud-user-registry-migrater
+        image: ghcr.io/kaese72/cloud-user-registry-migrater:v0.0.3
+        imagePullPolicy: IfNotPresent
+        args: ["-url=jdbc:mariadb://mariadb.data.svc.cluster.local:3306/clouduserregistry?user=cloud-user-registry&password=$(DATABASE_PASSWORD)", "migrate"]
+        env:
+          - name: "DATABASE_PASSWORD"
+            valueFrom:
+              secretKeyRef:
+                name: cloud-user-registry-secret
+                key: database.password
+        resources:
+          limits:
+            cpu: 250m
+            memory: 256M
+          requests:
+            cpu: 100m
+            memory: 128M
+      restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: cloud-user-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: cloud-user-registry
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: cloud-user-registry
+status:
+  loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloud-user-registry-ingress
+  labels:
+    app: cloud-user-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+    - host: accounts.humi.kaese.space
+      http:
+        paths:
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cloud-user-registry
+                port:
+                  number: 8080
+  tls:
+    - hosts:
+        - accounts.humi.kaese.space
+      secretName: letsencrypt-prod
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: cloud-user-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: cloud-user-registry
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        # The shared MariaDB instance lives in hallen-gitops-base's "data"
+        # namespace, not this app's own namespace.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mariadb
+              app.kubernetes.io/instance: mariadb
+      ports:
+        - port: 3306

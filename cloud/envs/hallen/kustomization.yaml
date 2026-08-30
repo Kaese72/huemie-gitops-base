@@ -13,3 +13,11 @@ configMapGenerator:
 resources:
   - namespace.yaml
   - ../../base/cloud-connect-server
+  - ../../base/cloud-user-registry
+
+# No configMapGenerator/secretGenerator for cloud-user-registry's database
+# credentials or signing keys here -- MariaDB is operator-managed (see
+# hallen-gitops-base) and cloud-user-registry provisions its own
+# database/user via CRs plus its own secret/keypair bootstrap Jobs defined
+# alongside it in base/cloud-user-registry, the same pattern
+# riskie-gitops-base uses for its services.
