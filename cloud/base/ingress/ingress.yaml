@@ -1,0 +1,31 @@
+---
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: cloud-ingress
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+    cert-manager.io/cluster-issuer: letsencrypt-prod
+spec:
+  rules:
+    - host: cloud.humi.kaese.space
+      http:
+        paths:
+          - path: /cloud-user-registry
+            pathType: Prefix
+            backend:
+              service:
+                name: cloud-user-registry
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: cloud-ui
+                port:
+                  number: 80
+  tls:
+    - hosts:
+        - cloud.humi.kaese.space
+      secretName: cloud-tls
