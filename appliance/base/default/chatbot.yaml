@@ -24,7 +24,7 @@ spec:
     spec:
       containers:
         - name: chatbot
-          image: ghcr.io/kaese72/chatbot:v0.0.1
+          image: ghcr.io/kaese72/chatbot:v0.0.2
           env:
             - name: "DATABASE_HOST"
               valueFrom:
@@ -104,7 +104,7 @@ spec:
     spec:
       containers:
         - name: chatbot-migrater
-          image: ghcr.io/kaese72/chatbot-migrater:v0.0.1
+          image: ghcr.io/kaese72/chatbot-migrater:v0.0.2
           imagePullPolicy: IfNotPresent
           args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/chatbot?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
           env:
