@@ -177,10 +177,10 @@ metadata:
     cert-manager.io/cluster-issuer: letsencrypt-prod
 spec:
   rules:
-    - host: accounts.humi.kaese.space
+    - host: cloud.humi.kaese.space
       http:
         paths:
-          - path: /
+          - path: /cloud-user-registry
             pathType: Prefix
             backend:
               service:
@@ -189,8 +189,8 @@ spec:
                   number: 8080
   tls:
     - hosts:
-        - accounts.humi.kaese.space
-      secretName: letsencrypt-prod
+        - cloud.humi.kaese.space
+      secretName: cloud-user-registry-tls
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
