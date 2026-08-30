@@ -6,6 +6,7 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "70"
     cert-manager.io/cluster-issuer: letsencrypt-prod
+    traefik.ingress.kubernetes.io/router.middlewares: huemie-cloud-redirect-https@kubernetescrd
 spec:
   rules:
     - host: cloud.humi.kaese.space
