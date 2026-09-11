@@ -199,7 +199,7 @@ spec:
     spec:
       containers:
       - name: appliance-registry-migrater
-        image: ghcr.io/kaese72/appliance-registry-migrater:v0.0.1
+        image: ghcr.io/kaese72/appliance-registry-migrater:v0.0.2
         imagePullPolicy: IfNotPresent
         args: ["-url=jdbc:mariadb://mariadb.data.svc.cluster.local:3306/applianceregistry?user=appliance-registry&password=$(DATABASE_PASSWORD)", "migrate"]
         env:
