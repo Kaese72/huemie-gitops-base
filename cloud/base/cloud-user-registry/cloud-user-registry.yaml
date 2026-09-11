@@ -89,6 +89,33 @@ spec:
                   key: auth.refresh-secret
             - name: "AUTH_RSA_PRIVATE_KEY_PATH"
               value: /etc/cloud-user-registry/private.pem
+            - name: "SMTP_HOST"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: smtp.host
+            - name: "SMTP_PORT"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: smtp.port
+            - name: "SMTP_USERNAME"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: smtp.username
+            - name: "SMTP_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: smtp.password
+            - name: "SMTP_FROM"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: smtp.from
+            - name: "PASSWORD_RESET_URL_BASE"
+              value: "https://humi.kaese.space/reset-password"
           volumeMounts:
             - name: rsa-key
               mountPath: /etc/cloud-user-registry
@@ -214,3 +241,16 @@ spec:
               app.kubernetes.io/instance: mariadb
       ports:
         - port: 3306
+    - to:
+        # SMTP relay for password-reset emails lives outside the cluster;
+        # kube-router NetworkPolicy can't select external endpoints by name,
+        # so this is left open by IP range rather than by pod/namespace
+        # selector. See project_kuberouter_netpol_drift memory if this
+        # policy ever appears not to take effect after editing it.
+        - ipBlock:
+            cidr: 0.0.0.0/0
+      ports:
+        - port: 587
+          protocol: TCP
+        - port: 465
+          protocol: TCP

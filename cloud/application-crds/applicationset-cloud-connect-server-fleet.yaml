@@ -35,7 +35,7 @@ spec:
       project: default
       source:
         repoURL: https://github.com/Kaese72/huemie-gitops-base.git
-        targetRevision: HEAD
+        targetRevision: master
         path: cloud/base/cloud-connect-server-instance
         kustomize:
           nameSuffix: "-{{.id}}"

@@ -21,12 +21,16 @@ kind of cluster-scoped object, on the other cluster ("hallen", not the
 ArgoCD control-plane cluster - unlike `application-crds`, this targets the
 same cluster as `cloud/envs/hallen`, just as its own separate Application).
 
-## Bootstrapping (one-time, outside this repo)
+## Bootstrapping
 
-Register this path as its own ArgoCD Application targeting `hallen`
-(`destination.name: hallen`, same as `cloud/envs/hallen`'s own
-Application), the same way every top-level kustomize root in this
-ecosystem gets registered.
+Registration is git-managed, not a manual `argocd app create`:
+`hallen-gitops-base/application-crds/app-humi-cloud-cluster-policies.yaml`
+is the Application object that points at this path (`destination.name:
+hallen`, same as `cloud/envs/hallen`'s own Application via
+`app-humi-cloud.yaml`), on a sync-wave before it so this policy is in place
+before appliance-registry's ServiceAccount/Deployment come up. Once that
+file is merged and `hallen-gitops-base/application-crds` syncs, this path
+is registered - nothing to run by hand.
 
 ## Requirements
 

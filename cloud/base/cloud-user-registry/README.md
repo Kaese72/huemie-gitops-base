@@ -12,12 +12,17 @@ and only referenced by name here.
 
 ## `cloud-user-registry-secret`
 
-A generic `Secret` with two keys:
+A generic `Secret` with the following keys:
 
 | Key | Used for |
 |---|---|
 | `database.password` | the `cloud-user-registry` MariaDB user's password (read by the `User` CR's `passwordSecretKeyRef` and by the app/migrater as `DATABASE_PASSWORD`) |
 | `auth.refresh-secret` | HMAC secret the app signs refresh tokens with, as `AUTH_REFRESH_SECRET` |
+| `smtp.host` | hostname of the SMTP relay used to send password-reset emails, as `SMTP_HOST` |
+| `smtp.port` | SMTP relay port, as `SMTP_PORT` (587 if omitted) |
+| `smtp.username` | SMTP auth username, as `SMTP_USERNAME` (leave empty/omit if the relay allows unauthenticated sends from the cluster egress IP) |
+| `smtp.password` | SMTP auth password, as `SMTP_PASSWORD` |
+| `smtp.from` | `From:` address on outgoing mail, as `SMTP_FROM` |
 
 Generate and apply it once:
 
@@ -27,8 +32,17 @@ REFRESH_SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
 
 kubectl create secret generic cloud-user-registry-secret -n huemie-cloud \
   --from-literal="database.password=$DB_PASSWORD" \
-  --from-literal="auth.refresh-secret=$REFRESH_SECRET"
+  --from-literal="auth.refresh-secret=$REFRESH_SECRET" \
+  --from-literal="smtp.host=$SMTP_HOST" \
+  --from-literal="smtp.port=$SMTP_PORT" \
+  --from-literal="smtp.username=$SMTP_USERNAME" \
+  --from-literal="smtp.password=$SMTP_PASSWORD" \
+  --from-literal="smtp.from=$SMTP_FROM"
 ```
+
+The reset link's base URL (`PASSWORD_RESET_URL_BASE`, the cloud-ui page a
+recipient lands on) is not secret and is set directly as a plain env var in
+`cloud-user-registry.yaml`.
 
 ## `cloud-user-registry-rsa-signing-key` / `cloud-user-registry-rsa-verify-key`
 

@@ -20,15 +20,18 @@ on "hallen" itself, or uses a different namespace than `argocd`, adjust
 `metadata.namespace` in `applicationset-cloud-connect-server-fleet.yaml`
 accordingly before applying.
 
-## Bootstrapping (one-time, outside this repo)
+## Bootstrapping
 
-1. **Register this path as its own ArgoCD Application**, targeting the
-   control-plane cluster (`https://kubernetes.default.svc` if ArgoCD runs
-   there, or the same way hallen-gitops-base's `application-crds` is
-   registered against "hallen" if not), same as any other Application in
-   this ecosystem - `argocd app create`, the UI, or however the rest of
-   this environment's cluster-admin bootstrapping is done. `path:
-   cloud/application-crds`.
+1. **Registration is git-managed, not a manual `argocd app create`.**
+   `hallen-gitops-base/application-crds/app-humi-cloud-application-crds.yaml`
+   is the Application object that points at this path
+   (`repoURL: huemie-gitops-base`, `path: cloud/application-crds`,
+   `destination: server: https://kubernetes.default.svc` - the same
+   control-plane cluster `hallen-gitops-base/application-crds` itself
+   already runs on) - the same pattern that repo already uses for
+   `cloud/envs/hallen` itself, via `app-humi-cloud.yaml`. Once that file is
+   merged and `hallen-gitops-base/application-crds` syncs, this path is
+   registered - nothing to run by hand.
 
 2. **Register the plugin's token.** ArgoCD's Plugin generator reads it out
    of `argocd-secret` (a pre-existing Secret ArgoCD manages itself - see
