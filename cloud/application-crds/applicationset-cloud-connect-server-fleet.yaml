@@ -1,0 +1,105 @@
+# Instantiates one cloud-connect-server-<id> (Deployment/Service/Ingress/
+# NetworkPolicy, from ../base/cloud-connect-server-instance) per active
+# Appliance in appliance-registry - see that service's README, "Cloud-side
+# cloud-connect-server provisioning".
+#
+# Unlike everything else in this repo, this object and the ConfigMap below
+# it belong on the ArgoCD *control-plane* cluster, in ArgoCD's own
+# namespace (assumed "argocd" below - adjust if this installation differs),
+# not on "hallen" where the huemie-cloud namespace actually lives. That's
+# the same split hallen-gitops-base's application-crds/ makes, just for a
+# single generated-fleet object instead of a handful of hand-authored ones.
+# Register this kustomization (path: cloud/application-crds) as its own
+# ArgoCD Application against the control-plane cluster, the same one-time,
+# outside-this-repo way hallen-gitops-base's application-crds is bootstrapped.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: cloud-connect-server-fleet
+  namespace: argocd
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - plugin:
+        configMapRef:
+          name: appliance-registry-plugin
+        requeueAfterSeconds: 180
+  template:
+    metadata:
+      name: "cloud-connect-server-{{.id}}"
+      annotations:
+        appliance-registry.humi.kaese.space/appliance-id: "{{.id}}"
+        appliance-registry.humi.kaese.space/appliance-name: "{{.name}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/Kaese72/huemie-gitops-base.git
+        targetRevision: HEAD
+        path: cloud/base/cloud-connect-server-instance
+        kustomize:
+          nameSuffix: "-{{.id}}"
+          patches:
+            - target:
+                kind: Deployment
+                name: cloud-connect-server
+              patch: |-
+                - op: replace
+                  path: /spec/selector/matchLabels/applianceId
+                  value: "{{.id}}"
+                - op: replace
+                  path: /spec/template/metadata/labels/applianceId
+                  value: "{{.id}}"
+                - op: replace
+                  path: /spec/template/spec/containers/0/env/1/valueFrom/secretKeyRef/name
+                  value: "cloud-connect-secret-{{.id}}"
+            - target:
+                kind: Service
+                name: cloud-connect-server
+              patch: |-
+                - op: replace
+                  path: /spec/selector/applianceId
+                  value: "{{.id}}"
+            - target:
+                kind: Ingress
+                name: cloud-connect-ingress
+              patch: |-
+                - op: replace
+                  path: /spec/rules/0/host
+                  value: "{{.hostname}}"
+                - op: replace
+                  path: /spec/tls/0/hosts/0
+                  value: "{{.hostname}}"
+            - target:
+                kind: NetworkPolicy
+                name: cloud-connect-server
+              patch: |-
+                - op: replace
+                  path: /spec/podSelector/matchLabels/applianceId
+                  value: "{{.id}}"
+      destination:
+        name: hallen
+        namespace: huemie-cloud
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+---
+# Registers appliance-registry as a Plugin generator - see
+# https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Plugin/.
+# The `token` value is an env-var-style reference into argocd-secret's
+# `plugin.appliance-registry.token` key, NOT a literal - see this
+# directory's README for the one-time manual step that puts it there.
+# No Secret is committed alongside this ConfigMap: unlike everything else
+# in this repo, argocd-secret is a pre-existing object ArgoCD itself
+# manages, and merging a key into it via a from-scratch kustomize-owned
+# Secret risks fighting that ownership instead of extending it.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: appliance-registry-plugin
+  namespace: argocd
+data:
+  token: "$plugin.appliance-registry.token"
+  baseUrl: "https://cloud.humi.kaese.space/appliance-registry/v0/argocd-plugin"
+  requestTimeout: "30"

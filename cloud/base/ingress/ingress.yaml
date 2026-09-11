@@ -19,6 +19,13 @@ spec:
                 name: cloud-user-registry
                 port:
                   number: 8080
+          - path: /appliance-registry
+            pathType: Prefix
+            backend:
+              service:
+                name: appliance-registry
+                port:
+                  number: 8080
           - path: /
             pathType: Prefix
             backend:

@@ -1,0 +1,291 @@
+# Provisions appliance-registry's own database and user against the shared
+# MariaDB instance managed by hallen-gitops-base (instance-mariadb,
+# namespace "data"). CRDs come from hallen-gitops-base/operator-mariadb-operator.
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Database
+metadata:
+  name: appliance-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: applianceregistry
+  mariaDbRef:
+    name: mariadb
+    namespace: data
+  characterSet: utf8
+  collate: utf8_general_ci
+  cleanupPolicy: Skip
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: User
+metadata:
+  name: appliance-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  name: appliance-registry
+  mariaDbRef:
+    name: mariadb
+    namespace: data
+  passwordSecretKeyRef:
+    name: appliance-registry-secret
+    key: database.password
+  host: "%"
+  cleanupPolicy: Skip
+---
+apiVersion: k8s.mariadb.com/v1alpha1
+kind: Grant
+metadata:
+  name: appliance-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "30"
+spec:
+  mariaDbRef:
+    name: mariadb
+    namespace: data
+  privileges:
+    - "ALL PRIVILEGES"
+  database: "applianceregistry"
+  table: "*"
+  username: appliance-registry
+  host: "%"
+  cleanupPolicy: Skip
+---
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: appliance-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+# Intentionally broader than appliance-registry actually needs: native RBAC
+# can restrict get/update/patch/delete to an enumerated resourceNames list,
+# but not to a *name pattern*, and it can't restrict create by name at all -
+# so there is no Role that says "only cloud-connect-secret-<id>" for
+# dynamically-created Secrets. ../../cluster-policies/ closes that gap with
+# a ValidatingAdmissionPolicy (a separate, non-namespaced kustomize root -
+# see its README for why); this Role only establishes that
+# appliance-registry may touch Secrets in this namespace *at all*, reached
+# through kube-apiserver-proxy (see ../kube-apiserver-proxy) rather than a
+# direct in-cluster apiserver connection.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: appliance-registry-secret-writer
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["get", "create", "update", "patch", "delete"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: appliance-registry-secret-writer
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+subjects:
+  - kind: ServiceAccount
+    name: appliance-registry
+roleRef:
+  kind: Role
+  name: appliance-registry-secret-writer
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: appliance-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: appliance-registry
+  template:
+    metadata:
+      labels:
+        app: appliance-registry
+        huemie-owner: core
+        huemie.space/service-role: appliance-registry
+    spec:
+      serviceAccountName: appliance-registry
+      containers:
+        - name: appliance-registry
+          image: ghcr.io/kaese72/appliance-registry:v0.0.1
+          env:
+            # See ../kube-apiserver-proxy/kube-apiserver-proxy.yaml and the
+            # appliance-side copy of this comment: NetworkPolicy can't
+            # reliably restrict egress straight to the apiserver's
+            # ClusterIP, so route the Kubernetes client's traffic through
+            # kube-apiserver-proxy instead. KUBERNETES_SERVICE_HOST/PORT
+            # are left at their normal auto-injected values - this is a
+            # transparent HTTP CONNECT proxy, so client-go still dials and
+            # TLS-verifies the real apiserver address, it just tunnels
+            # through the proxy pod to get there. No Go code needed this:
+            # client-go's default transport honors HTTPS_PROXY the same
+            # way any net/http client does.
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
+            - name: "DATABASE_HOST"
+              value: "mariadb.data.svc.cluster.local"
+            - name: "DATABASE_USER"
+              value: "appliance-registry"
+            - name: "DATABASE_PASSWORD"
+              valueFrom:
+                secretKeyRef:
+                  name: appliance-registry-secret
+                  key: database.password
+            # Two independent, comma-separated token sets (appliance-registry
+            # supports more than one valid value per set for rotation) - see
+            # its README's "Architecture" section on why the plugin token is
+            # kept separate from the generic service token.
+            - name: "AUTH_SERVICE_TOKENS"
+              valueFrom:
+                secretKeyRef:
+                  name: appliance-registry-secret
+                  key: auth.service-tokens
+            - name: "AUTH_PLUGIN_TOKENS"
+              valueFrom:
+                secretKeyRef:
+                  name: appliance-registry-secret
+                  key: auth.plugin-tokens
+            - name: "AUTH_USE_TOKEN_RSA_PUBLIC_KEY_PATH"
+              value: /etc/cloud-user-registry/public.pem
+          volumeMounts:
+            - name: cloud-user-registry-public-key
+              mountPath: /etc/cloud-user-registry
+              readOnly: true
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 250m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+      volumes:
+        # Reuses cloud-user-registry's own public-key Secret (see
+        # cloud/base/cloud-user-registry/README.md) rather than a copy -
+        # appliance-registry verifies the exact same use tokens
+        # cloud-user-registry issues, so there is only ever one keypair.
+        - name: cloud-user-registry-public-key
+          secret:
+            secretName: cloud-user-registry-rsa-verify-key
+            items:
+              - key: public.pem
+                path: public.pem
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: appliance-registry-migrater
+  labels:
+    app: appliance-registry-migrater
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: appliance-registry-migrater
+        huemie.space/service-role: appliance-registry
+    spec:
+      containers:
+      - name: appliance-registry-migrater
+        image: ghcr.io/kaese72/appliance-registry-migrater:v0.0.1
+        imagePullPolicy: IfNotPresent
+        args: ["-url=jdbc:mariadb://mariadb.data.svc.cluster.local:3306/applianceregistry?user=appliance-registry&password=$(DATABASE_PASSWORD)", "migrate"]
+        env:
+          - name: "DATABASE_PASSWORD"
+            valueFrom:
+              secretKeyRef:
+                name: appliance-registry-secret
+                key: database.password
+        resources:
+          limits:
+            cpu: 250m
+            memory: 256M
+          requests:
+            cpu: 100m
+            memory: 128M
+      restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: appliance-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: appliance-registry
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: appliance-registry
+status:
+  loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: appliance-registry
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: appliance-registry
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        # The shared MariaDB instance lives in hallen-gitops-base's "data"
+        # namespace, not this app's own namespace.
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: data
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: mariadb
+              app.kubernetes.io/instance: mariadb
+      ports:
+        - port: 3306
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: kube-apiserver-proxy
+      ports:
+        - port: 8080

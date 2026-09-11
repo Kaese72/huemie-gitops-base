@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: huemie-cloud
+
+resources:
+  - cloud-connect-server-instance.yaml
+
+# No configMapGenerator/secretGenerator here on purpose: CLOUD_CONNECT_AUTH's
+# Secret is written directly by appliance-registry (not templated) and
+# CLOUD_CONNECT_INTERNAL_HOST's ConfigMap is a fixed, already-deployed
+# singleton from ../../envs/hallen - see cloud-connect-server-instance.yaml's
+# top comment and ../../envs/hallen/kustomization.yaml's
+# generatorOptions.disableNameSuffixHash for why referencing it by its
+# unhashed literal name from here is safe.

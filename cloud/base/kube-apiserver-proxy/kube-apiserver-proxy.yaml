@@ -1,0 +1,86 @@
+---
+# The cloud-side counterpart of appliance/base/default/kube-apiserver-proxy.yaml -
+# same image, same reasoning (NetworkPolicy can't reliably restrict egress
+# straight to the apiserver's ClusterIP, so route through this single small
+# HTTP CONNECT proxy pod instead), deployed separately here because this is a
+# different cluster ("hallen") with its own apiserver. Only appliance-registry
+# uses it so far (to write cloud-connect-secret-<id> Secrets - see its README's
+# "Cloud-side cloud-connect-server provisioning" section).
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      app: kube-apiserver-proxy
+  template:
+    metadata:
+      labels:
+        app: kube-apiserver-proxy
+        huemie-owner: core
+        huemie.space/service-role: kube-apiserver-proxy
+    spec:
+      serviceAccountName: kube-apiserver-proxy
+      containers:
+        - name: kube-apiserver-connect-proxy
+          image: ghcr.io/kaese72/kube-apiserver-connect-proxy:v0.0.1
+          ports:
+            - containerPort: 8080
+          resources:
+            limits:
+              cpu: 50m
+              memory: 32Mi
+            requests:
+              cpu: 10m
+              memory: 16Mi
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: kube-apiserver-proxy
+spec:
+  ports:
+    - port: 6443
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: kube-apiserver-proxy
+status:
+  loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: kube-apiserver-proxy
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: kube-apiserver-proxy
+  policyTypes:
+    - Ingress
+  # No Egress policyType here deliberately - see the appliance-side copy of
+  # this manifest for why.
+  ingress:
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: appliance-registry
+      ports:
+        - port: 8080

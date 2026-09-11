@@ -1,3 +1,23 @@
+# Per-appliance template, instantiated once per active Appliance by
+# cloud/application-crds/applicationset-cloud-connect-server-fleet.yaml -
+# see that file and appliance-registry's README ("Cloud-side
+# cloud-connect-server provisioning") for the full mechanism.
+#
+# Every value below that needs to differ per appliance is deliberately left
+# as an obvious placeholder ("unset" / "placeholder...") rather than a real
+# default, and is JSON6902-patched by the ApplicationSet template. If you
+# ever see one of these placeholders on a live object, the patch didn't
+# apply - it's not a fallback that's silently working.
+#
+# Unlike cloud/base/cloud-connect-server (the original single-tenant
+# manifest, still deployed as-is for the one appliance that predates this
+# fleet mechanism), every resource here is deployed once per appliance into
+# the *same* huemie-cloud namespace, so metadata.name is disambiguated by
+# the ApplicationSet's nameSuffix ("-<id>") and pod selection is
+# disambiguated by the "applianceId" label, patched onto every
+# selector/podSelector/template-label location below in lockstep - not by
+# nameSuffix or Kustomize's commonLabels transformer, since neither is
+# guaranteed to reach every one of those fields consistently.
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -9,10 +29,12 @@ spec:
   selector:
     matchLabels:
       app: cloud-connect-server
+      applianceId: "unset"
   template:
     metadata:
       labels:
         app: cloud-connect-server
+        applianceId: "unset"
         huemie-owner: core
         huemie.space/service-role: cloud-connect-server
     spec:
@@ -20,11 +42,22 @@ spec:
         - name: cloud-connect-server
           image: ghcr.io/kaese72/cloud-connect-server:v0.0.2
           env:
+            # index 0 - CLOUD_CONNECT_INTERNAL_HOST is intentionally NOT
+            # patched per instance: it's the fixed internal ingress
+            # hostname convention every appliance cluster resolves
+            # locally (see cloud-connect's README's "Host header flow"),
+            # not an appliance-specific value, so every instance shares
+            # this one ConfigMap. See ../../envs/hallen/kustomization.yaml
+            # for why it's safe to reference by this unhashed literal name
+            # from a kustomize build that doesn't generate it itself.
             - name: CLOUD_CONNECT_INTERNAL_HOST
               valueFrom:
                 configMapKeyRef:
                   name: cloud-connect-configmap
                   key: internal.host
+            # index 1 - patched to cloud-connect-secret-<id>, the Secret
+            # appliance-registry writes directly (never templated here -
+            # see its README).
             - name: CLOUD_CONNECT_AUTH
               valueFrom:
                 secretKeyRef:
@@ -55,6 +88,7 @@ spec:
       targetPort: 8080
   selector:
     app: cloud-connect-server
+    applianceId: "unset"
 ---
 apiVersion: networking.k8s.io/v1
 kind: Ingress
@@ -68,7 +102,7 @@ metadata:
     traefik.ingress.kubernetes.io/router.middlewares: huemie-cloud-redirect-https@kubernetescrd
 spec:
   rules:
-    - host: apartment.humi.kaese.space
+    - host: placeholder.appliance.humi.kaese.space
       http:
         paths:
           - path: /
@@ -80,7 +114,7 @@ spec:
                   number: 8080
   tls:
     - hosts:
-        - apartment.humi.kaese.space
+        - placeholder.appliance.humi.kaese.space
       secretName: letsencrypt-prod
 ---
 apiVersion: networking.k8s.io/v1
@@ -92,7 +126,8 @@ metadata:
 spec:
   podSelector:
     matchLabels:
-      huemie.space/service-role: cloud-connect-server
+      app: cloud-connect-server
+      applianceId: "unset"
   policyTypes:
     - Ingress
     - Egress
@@ -101,11 +136,10 @@ spec:
     # and ordinary proxied user traffic arrive the same way: through the single
     # public Ingress object above, via traefik - there is no separate path a
     # legitimate tunnel client uses to reach this pod directly. Scoped to just
-    # traefik rather than left open to any pod in the cluster, the same
-    # pattern already used for every other public-facing service in this repo
-    # (cloud-user-registry, appliance-registry, ...) - an open policy here
-    # would let any other compromised pod in "hallen" attempt the chisel
-    # handshake directly, bypassing the public ingress and its access logs.
+    # traefik rather than left open to any pod in the cluster - open ingress
+    # here would let any other compromised pod in "hallen" attempt the chisel
+    # handshake directly against any appliance's tunnel, bypassing the public
+    # ingress and its access logs, for every appliance this template stamps out.
     - from:
         - namespaceSelector:
             matchLabels:
