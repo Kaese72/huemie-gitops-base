@@ -114,7 +114,7 @@ spec:
       serviceAccountName: appliance-registry
       containers:
         - name: appliance-registry
-          image: ghcr.io/kaese72/appliance-registry:v0.0.2
+          image: ghcr.io/kaese72/appliance-registry:v0.0.3
           env:
             # See ../kube-apiserver-proxy/kube-apiserver-proxy.yaml and the
             # appliance-side copy of this comment: NetworkPolicy can't
