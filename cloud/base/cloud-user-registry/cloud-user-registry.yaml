@@ -115,7 +115,7 @@ spec:
                   name: cloud-user-registry-secret
                   key: smtp.from
             - name: "PASSWORD_RESET_URL_BASE"
-              value: "https://humi.kaese.space/reset-password"
+              value: "https://cloud.humi.kaese.space/reset-password"
           volumeMounts:
             - name: rsa-key
               mountPath: /etc/cloud-user-registry
