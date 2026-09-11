@@ -42,6 +42,8 @@
             "matchPackageNames": [
                 "ghcr.io/kaese72/adapter-attendant",
                 "ghcr.io/kaese72/adapter-attendant-migrater",
+                "ghcr.io/kaese72/appliance-registry",
+                "ghcr.io/kaese72/appliance-registry-migrater",
                 "ghcr.io/kaese72/authentication",
                 "ghcr.io/kaese72/authentication-migrater",
                 "ghcr.io/kaese72/chatbot",
