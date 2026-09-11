@@ -71,7 +71,7 @@ spec:
     spec:
       containers:
         - name: cloud-user-registry
-          image: ghcr.io/kaese72/cloud-user-registry:v0.0.3
+          image: ghcr.io/kaese72/cloud-user-registry:v0.0.4
           env:
             - name: "DATABASE_HOST"
               value: "mariadb.data.svc.cluster.local"
@@ -157,7 +157,7 @@ spec:
     spec:
       containers:
       - name: cloud-user-registry-migrater
-        image: ghcr.io/kaese72/cloud-user-registry-migrater:v0.0.3
+        image: ghcr.io/kaese72/cloud-user-registry-migrater:v0.0.4
         imagePullPolicy: IfNotPresent
         args: ["-url=jdbc:mariadb://mariadb.data.svc.cluster.local:3306/clouduserregistry?user=cloud-user-registry&password=$(DATABASE_PASSWORD)", "migrate"]
         env:
