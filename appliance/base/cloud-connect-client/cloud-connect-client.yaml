@@ -20,26 +20,49 @@ spec:
         - name: cloud-connect-client
           image: ghcr.io/kaese72/cloud-connect-client:v0.0.2
           env:
-            - name: CLOUD_CONNECT_SERVER_URL
+            - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:
                   name: cloud-connect-configmap
-                  key: server.url
-            - name: CLOUD_CONNECT_ALLOWED_HOST_PATTERN
+                  key: database.host
+            - name: DATABASE_USER
               valueFrom:
                 configMapKeyRef:
                   name: cloud-connect-configmap
-                  key: allowed.host.pattern
-            - name: CLOUD_CONNECT_LOCAL_INGRESS
-              valueFrom:
-                configMapKeyRef:
-                  name: cloud-connect-configmap
-                  key: local.ingress
-            - name: CLOUD_CONNECT_AUTH
+                  key: database.user
+            - name: DATABASE_PASSWORD
               valueFrom:
                 secretKeyRef:
-                  name: cloud-connect-secret
-                  key: auth
+                  name: cloud-connect-client-secret
+                  key: database.password
+            - name: AUTH_USE_TOKEN_RSA_PUBLIC_KEY_PATH
+              value: /etc/auth-pubkey/public.pem
+            - name: APPLIANCE_REGISTRY_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: appliance-registry.base-url
+            - name: CLOUD_ENROLL_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: cloud.enroll-base-url
+            - name: TUNNEL_ALLOWED_HOST_PATTERN
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: tunnel.allowed-host-pattern
+            - name: TUNNEL_LOCAL_INGRESS
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: tunnel.local-ingress
+          volumeMounts:
+            - name: auth-pubkey
+              mountPath: /etc/auth-pubkey
+              readOnly: true
+          ports:
+            - containerPort: 8080
           resources:
             limits:
               cpu: 250m
@@ -47,6 +70,79 @@ spec:
             requests:
               cpu: 50m
               memory: 64M
+      volumes:
+        - name: auth-pubkey
+          secret:
+            secretName: auth-rsa-verify-key
+            items:
+              - key: public.pem
+                path: public.pem
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: cloud-connect-client-migrater
+  labels:
+    app: cloud-connect-client-migrater
+  annotations:
+    argocd.argoproj.io/sync-wave: "40"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: cloud-connect-client-migrater
+        huemie.space/service-role: cloud-connect-client
+    spec:
+      containers:
+      - name: cloud-connect-client-migrater
+        image: ghcr.io/kaese72/cloud-connect-client-migrater:v0.0.2
+        imagePullPolicy: IfNotPresent
+        args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/cloudconnectclient?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
+        env:
+          - name: "DATABASE_HOST"
+            valueFrom:
+              configMapKeyRef:
+                name: cloud-connect-configmap
+                key: database.host
+          - name: "DATABASE_USER"
+            valueFrom:
+              configMapKeyRef:
+                name: cloud-connect-configmap
+                key: database.user
+          - name: "DATABASE_PASSWORD"
+            valueFrom:
+              secretKeyRef:
+                name: cloud-connect-client-secret
+                key: database.password
+        resources:
+            limits:
+              cpu: 250m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 128M
+      restartPolicy: Never
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: cloud-connect-client
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: cloud-connect-client
+spec:
+  ports:
+    - port: 8080
+      protocol: TCP
+      targetPort: 8080
+  selector:
+    app: cloud-connect-client
+status:
+  loadBalancer: {}
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
@@ -61,7 +157,15 @@ spec:
   policyTypes:
     - Ingress
     - Egress
-  ingress: []
+  ingress:
+    # The local UI's "Connect to Cloud" / status page calls this service's
+    # control API directly.
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: huemie-ui
+      ports:
+        - port: 8080
   egress:
     - to:
         - namespaceSelector:
@@ -75,7 +179,15 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
-    # Outbound tunnel connection to the cloud server (HTTPS/WSS)
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: mariadb
+      ports:
+        - port: 3306
+    # Outbound tunnel connection to the cloud server (HTTPS/WSS), and the
+    # server-to-server enrollment redeem call to appliance-registry - both
+    # plain outbound internet HTTPS, independent of each other.
     - to:
         - ipBlock:
             cidr: 0.0.0.0/0

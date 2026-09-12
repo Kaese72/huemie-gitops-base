@@ -15,6 +15,11 @@ metadata:
   name: mariadb-config
 ---
 apiVersion: v1
+# init.sql only runs against a brand-new, empty data directory (standard
+# mariadb image behavior) - it has no effect on the already-provisioned PVC
+# this environment uses. Adding a database here documents what a fresh
+# install gets; onboarding a new database onto the live instance still
+# requires running its CREATE DATABASE/GRANT statements by hand once.
 data:
   init.sql: |
     CREATE USER IF NOT EXISTS 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
@@ -28,6 +33,8 @@ data:
     GRANT ALL PRIVILEGES ON itttorchestrator.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
     CREATE DATABASE IF NOT EXISTS chatbot;
     GRANT ALL PRIVILEGES ON chatbot.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
+    CREATE DATABASE IF NOT EXISTS cloudconnectclient;
+    GRANT ALL PRIVILEGES ON cloudconnectclient.* TO 'user'@'%' IDENTIFIED BY 'databaseuserpassword';
 kind: ConfigMap
 metadata:
   name: mariadb-init-sql
@@ -179,6 +186,12 @@ spec:
         - podSelector:
             matchLabels:
               huemie.space/service-role: chatbot
+      ports:
+        - port: 3306
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: cloud-connect-client
       ports:
         - port: 3306
   egress:

@@ -5,9 +5,12 @@ namespace: huemie-local
 configMapGenerator:
 - name: cloud-connect-configmap
   literals:
-    - server.url=https://apartment.humi.kaese.space/cloud-connect/v0/tunnel
-    - allowed.host.pattern=app\.huemie\.local
-    - local.ingress=traefik.kube-system.svc.cluster.local:80
+    - database.host=mariadb
+    - database.user=user
+    - appliance-registry.base-url=https://cloud.humi.kaese.space
+    - cloud.enroll-base-url=https://cloud.humi.kaese.space/enroll
+    - tunnel.allowed-host-pattern=app\.huemie\.local
+    - tunnel.local-ingress=traefik.kube-system.svc.cluster.local:80
 - name: adapter-attendant-configmap
   literals:
     - adapter.namespace=adapters
@@ -35,6 +38,9 @@ configMapGenerator:
     - authentication.url=http://authentication.huemie-local:8080
 
 secretGenerator:
+- name: cloud-connect-client-secret
+  literals:
+    - database.password=databaseuserpassword
 - name: adapter-attendant-secret
   literals:
     - database.password=databaseuserpassword

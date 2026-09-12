@@ -49,6 +49,7 @@
                 "ghcr.io/kaese72/chatbot",
                 "ghcr.io/kaese72/chatbot-migrater",
                 "ghcr.io/kaese72/cloud-connect-client",
+                "ghcr.io/kaese72/cloud-connect-client-migrater",
                 "ghcr.io/kaese72/cloud-ui",
                 "ghcr.io/kaese72/cloud-user-registry",
                 "ghcr.io/kaese72/cloud-user-registry-migrater",

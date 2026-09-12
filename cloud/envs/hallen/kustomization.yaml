@@ -10,21 +10,18 @@ configMapGenerator:
     # on the appliance cluster.
     - internal.host=app.huemie.local
 
-# cloud-connect-configmap needs a stable, unhashed name: it's read not just
-# by ../../base/cloud-connect-server (built together with it, in this same
-# kustomization, where kustomize's automatic name-reference rewriting would
-# handle a hashed name fine) but also by every per-appliance
-# cloud-connect-server-<id> Deployment the cloud-connect-server-fleet
-# ApplicationSet generates from ../../base/cloud-connect-server-instance -
-# each of those is built as its own separate, unrelated kustomize run that
-# has no visibility into this generator, so it can only reference this
-# ConfigMap by a name it can predict ahead of time.
+# cloud-connect-configmap needs a stable, unhashed name: it's read by every
+# per-appliance cloud-connect-server-<id> Deployment the
+# cloud-connect-server-fleet ApplicationSet generates from
+# ../../base/cloud-connect-server-instance - each of those is built as its
+# own separate, unrelated kustomize run that has no visibility into this
+# generator, so it can only reference this ConfigMap by a name it can
+# predict ahead of time.
 generatorOptions:
   disableNameSuffixHash: true
 
 resources:
   - namespace.yaml
-  - ../../base/cloud-connect-server
   - ../../base/cloud-user-registry
   - ../../base/appliance-registry
   - ../../base/kube-apiserver-proxy
