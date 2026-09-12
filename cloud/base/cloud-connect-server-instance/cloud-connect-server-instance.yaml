@@ -40,7 +40,7 @@ spec:
     spec:
       containers:
         - name: cloud-connect-server
-          image: ghcr.io/kaese72/cloud-connect-server:v0.0.2
+          image: ghcr.io/kaese72/cloud-connect-server:v0.0.3
           env:
             # index 0 - CLOUD_CONNECT_INTERNAL_HOST is intentionally NOT
             # patched per instance: it's the fixed internal ingress
