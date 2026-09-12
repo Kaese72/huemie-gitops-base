@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: cloud-ui
-          image: ghcr.io/kaese72/cloud-ui:v0.0.4
+          image: ghcr.io/kaese72/cloud-ui:v0.0.5
           ports:
             - containerPort: 80
           resources:
