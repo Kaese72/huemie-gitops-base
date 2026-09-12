@@ -158,6 +158,15 @@ spec:
     - Ingress
     - Egress
   ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 8080
     # The local UI's "Connect to Cloud" / status page calls this service's
     # control API directly.
     - from:
