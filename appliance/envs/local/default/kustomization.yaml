@@ -9,6 +9,7 @@ configMapGenerator:
     - database.user=user
     - appliance-registry.base-url=https://cloud.humi.kaese.space
     - cloud.enroll-base-url=https://cloud.humi.kaese.space/enroll
+    - cloud.login-base-url=https://cloud.humi.kaese.space/appliance-login
     - tunnel.allowed-host-pattern=app\.huemie\.local
     - tunnel.local-ingress=traefik.kube-system.svc.cluster.local:80
 - name: adapter-attendant-configmap
@@ -21,6 +22,7 @@ configMapGenerator:
   literals:
     - database.host=mariadb
     - database.user=user
+    - cloud.connect-client-url=http://cloud-connect-client.huemie-local:8081
 - name: device-store-configmap
   literals:
     - database.host=mariadb
@@ -41,6 +43,10 @@ secretGenerator:
 - name: cloud-connect-client-secret
   literals:
     - database.password=databaseuserpassword
+    # Only reachable on the internal-only listener (see the Deployment), so
+    # a fixed local value is acceptable here like the other local secrets.
+    # Must match authentication-secret's cloud.service-token.
+    - auth.internal-service-tokens=localcloudloginservicetoken
 - name: adapter-attendant-secret
   literals:
     - database.password=databaseuserpassword
@@ -48,6 +54,7 @@ secretGenerator:
   literals:
     - database.password=databaseuserpassword
     - auth.refresh-secret=supersecretrefreshsecret
+    - cloud.service-token=localcloudloginservicetoken
 - name: device-store-secret
   literals:
     - database.password=databaseuserpassword

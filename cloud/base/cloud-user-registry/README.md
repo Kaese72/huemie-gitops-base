@@ -23,16 +23,21 @@ A generic `Secret` with the following keys:
 | `smtp.username` | SMTP auth username, as `SMTP_USERNAME` (leave empty/omit if the relay allows unauthenticated sends from the cluster egress IP) |
 | `smtp.password` | SMTP auth password, as `SMTP_PASSWORD` |
 | `smtp.from` | `From:` address on outgoing mail, as `SMTP_FROM` |
+| `auth.service-tokens` | comma-separated bearer token(s) other cloud services use on the internal-only listener (port 8081, never routed by the ingress), as `AUTH_SERVICE_TOKENS`. `appliance-registry-secret`'s `user-registry.service-token` must be one of them |
 
 Generate and apply it once:
 
 ```sh
 DB_PASSWORD=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
 REFRESH_SECRET=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+# Keep this - the same value goes into appliance-registry-secret as
+# user-registry.service-token.
+USER_REGISTRY_SERVICE_TOKEN=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
 
 kubectl create secret generic cloud-user-registry-secret -n huemie-cloud \
   --from-literal="database.password=$DB_PASSWORD" \
   --from-literal="auth.refresh-secret=$REFRESH_SECRET" \
+  --from-literal="auth.service-tokens=$USER_REGISTRY_SERVICE_TOKEN" \
   --from-literal="smtp.host=$SMTP_HOST" \
   --from-literal="smtp.port=$SMTP_PORT" \
   --from-literal="smtp.username=$SMTP_USERNAME" \

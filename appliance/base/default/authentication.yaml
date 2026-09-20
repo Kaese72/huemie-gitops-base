@@ -42,6 +42,19 @@ spec:
                   key: auth.refresh-secret
             - name: "AUTH_RSA_PRIVATE_KEY_PATH"
               value: /etc/authentication/private.pem
+            # "Log in with Humi Cloud" goes through cloud-connect-client's
+            # internal listener. Must be one of that service's
+            # auth.internal-service-tokens.
+            - name: "CLOUD_CONNECT_CLIENT_URL"
+              valueFrom:
+                configMapKeyRef:
+                  name: authentication-configmap
+                  key: cloud.connect-client-url
+            - name: "CLOUD_SERVICE_TOKEN"
+              valueFrom:
+                secretKeyRef:
+                  name: authentication-secret
+                  key: cloud.service-token
           volumeMounts:
             - name: rsa-key
               mountPath: /etc/authentication
@@ -177,3 +190,9 @@ spec:
               huemie.space/service-role: mariadb
       ports:
         - port: 3306
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: cloud-connect-client
+      ports:
+        - port: 8081

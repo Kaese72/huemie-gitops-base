@@ -9,13 +9,14 @@ and applied out of band instead of bootstrapped in-cluster.
 
 ## `appliance-registry-secret`
 
-A generic `Secret` with three keys:
+A generic `Secret` with four keys:
 
 | Key | Used for |
 |---|---|
 | `database.password` | the `appliance-registry` MariaDB user's password (read by the `User` CR's `passwordSecretKeyRef` and by the app/migrater as `DATABASE_PASSWORD`) |
 | `auth.service-tokens` | comma-separated bearer token(s) for the generic internal-caller listing path (`AUTH_SERVICE_TOKENS`) |
 | `auth.plugin-tokens` | comma-separated bearer token(s) for the ArgoCD ApplicationSet Plugin generator specifically (`AUTH_PLUGIN_TOKENS`) |
+| `user-registry.service-token` | the bearer token appliance-registry presents to cloud-user-registry's internal listener for group-membership lookups (`USER_REGISTRY_SERVICE_TOKEN`). Must be one of the values in `cloud-user-registry-secret`'s `auth.service-tokens` |
 
 These are two **independent** token sets, not one shared secret - see
 appliance-registry's README ("Architecture") for why: the plugin endpoint
@@ -32,12 +33,22 @@ Generate and apply it once:
 DB_PASSWORD=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
 SERVICE_TOKEN=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
 PLUGIN_TOKEN=$(head -c 32 /dev/urandom | base64 | tr -d '\n')
+# The value from cloud-user-registry-secret's auth.service-tokens (see
+# ../cloud-user-registry/README.md).
+USER_REGISTRY_SERVICE_TOKEN=<the same value>
 
 kubectl create secret generic appliance-registry-secret -n huemie-cloud \
   --from-literal="database.password=$DB_PASSWORD" \
   --from-literal="auth.service-tokens=$SERVICE_TOKEN" \
-  --from-literal="auth.plugin-tokens=$PLUGIN_TOKEN"
+  --from-literal="auth.plugin-tokens=$PLUGIN_TOKEN" \
+  --from-literal="user-registry.service-token=$USER_REGISTRY_SERVICE_TOKEN"
 ```
+
+Both `appliance-registry-secret` and `cloud-user-registry-secret` must contain
+their new key **before** the corresponding Deployment is synced with this
+change - the pods reference it without a default and will not start otherwise.
+For an existing install, add the keys to the live Secrets first
+(`kubectl patch secret ... --type merge -p '{"stringData":{...}}'`).
 
 Keep `$PLUGIN_TOKEN` around - the same value goes into `argocd-secret` in
 the ArgoCD control-plane cluster, per `../../application-crds/README.md`.

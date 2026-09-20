@@ -47,6 +47,19 @@ spec:
                 configMapKeyRef:
                   name: cloud-connect-configmap
                   key: cloud.enroll-base-url
+            - name: CLOUD_LOGIN_BASE_URL
+              valueFrom:
+                configMapKeyRef:
+                  name: cloud-connect-configmap
+                  key: cloud.login-base-url
+            # Comma-separated bearer token(s) the authentication service uses
+            # on the internal-only cloud-login listener (port 8081). Must
+            # include authentication-secret's cloud.service-token.
+            - name: AUTH_INTERNAL_SERVICE_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-connect-client-secret
+                  key: auth.internal-service-tokens
             - name: TUNNEL_ALLOWED_HOST_PATTERN
               valueFrom:
                 configMapKeyRef:
@@ -63,6 +76,10 @@ spec:
               readOnly: true
           ports:
             - containerPort: 8080
+            # Internal-only cloud-login API for the authentication service.
+            # Never routed by the ingress (which only targets the Service's
+            # "http" port), so it is not reachable through the cloud tunnel.
+            - containerPort: 8081
           resources:
             limits:
               cpu: 250m
@@ -136,9 +153,14 @@ metadata:
   name: cloud-connect-client
 spec:
   ports:
-    - port: 8080
+    - name: http
+      port: 8080
       protocol: TCP
       targetPort: 8080
+    - name: internal
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
   selector:
     app: cloud-connect-client
 status:
@@ -175,6 +197,14 @@ spec:
               huemie.space/service-role: huemie-ui
       ports:
         - port: 8080
+    # The authentication service's "log in with Humi Cloud" (start, redeem
+    # the login code, re-check access on refresh) uses the internal listener.
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: authentication
+      ports:
+        - port: 8081
   egress:
     - to:
         - namespaceSelector:

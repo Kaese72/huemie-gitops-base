@@ -89,6 +89,13 @@ spec:
                   key: auth.refresh-secret
             - name: "AUTH_RSA_PRIVATE_KEY_PATH"
               value: /etc/cloud-user-registry/private.pem
+            # Comma-separated bearer token(s) other cloud services
+            # (appliance-registry) use to call the internal-only listener.
+            - name: "AUTH_SERVICE_TOKENS"
+              valueFrom:
+                secretKeyRef:
+                  name: cloud-user-registry-secret
+                  key: auth.service-tokens
             - name: "SMTP_HOST"
               valueFrom:
                 secretKeyRef:
@@ -122,6 +129,10 @@ spec:
               readOnly: true
           ports:
             - containerPort: 8080
+            # Internal-only API for other cloud services. Never routed by the
+            # ingress (which only targets the Service's "http" port) and only
+            # reachable from appliance-registry per the NetworkPolicy below.
+            - containerPort: 8081
           resources:
             limits:
               cpu: 500m
@@ -185,9 +196,14 @@ metadata:
   name: cloud-user-registry
 spec:
   ports:
-    - port: 8080
+    - name: http
+      port: 8080
       protocol: TCP
       targetPort: 8080
+    - name: internal
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
   selector:
     app: cloud-user-registry
 status:
@@ -216,6 +232,14 @@ spec:
               app.kubernetes.io/name: traefik
       ports:
         - port: 8080
+    # appliance-registry asks who is a member of a group (see the internal
+    # listener above).
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: appliance-registry
+      ports:
+        - port: 8081
   egress:
     - to:
         - namespaceSelector:

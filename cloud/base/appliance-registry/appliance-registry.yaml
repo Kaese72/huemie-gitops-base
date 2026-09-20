@@ -154,6 +154,16 @@ spec:
                   key: auth.plugin-tokens
             - name: "AUTH_USE_TOKEN_RSA_PUBLIC_KEY_PATH"
               value: /etc/cloud-user-registry/public.pem
+            # Membership lookups (who may log in to / still has access to an
+            # appliance) go to cloud-user-registry's internal-only listener.
+            # The token must be one of that service's auth.service-tokens.
+            - name: "USER_REGISTRY_BASE_URL"
+              value: "http://cloud-user-registry:8081"
+            - name: "USER_REGISTRY_SERVICE_TOKEN"
+              valueFrom:
+                secretKeyRef:
+                  name: appliance-registry-secret
+                  key: user-registry.service-token
           volumeMounts:
             - name: cloud-user-registry-public-key
               mountPath: /etc/cloud-user-registry
@@ -289,3 +299,9 @@ spec:
               huemie.space/service-role: kube-apiserver-proxy
       ports:
         - port: 8080
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: cloud-user-registry
+      ports:
+        - port: 8081
