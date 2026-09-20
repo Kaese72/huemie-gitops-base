@@ -13,25 +13,25 @@ images:
     newTag: v0.0.4-20260920122948-e612228
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
-    newTag: v0.0.64-20260816104624-d3f5347
+    newTag: v0.0.64-20260920124149-631a32b
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
-    newTag: v0.0.64-20260816104624-d3f5347
+    newTag: v0.0.64-20260920124149-631a32b
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
     newTag: v0.0.6-20260912094437-548ae67
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
-    newTag: v0.0.20-20260517100140-a2bebb4
+    newTag: v0.0.20-20260920124229-1978fc5
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
-    newTag: v0.0.20-20260517100139-a2bebb4
+    newTag: v0.0.20-20260920124227-1978fc5
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
-    newTag: v0.0.1-20260730213019-eb691a3
+    newTag: v0.0.1-20260920124203-e98112b
   - name: ghcr.io/kaese72/ittt-orchestrator-migrater
     newName: ghcr.io/kaese72/ittt-orchestrator-migrater-development
-    newTag: v0.0.1-20260730213012-eb691a3
+    newTag: v0.0.1-20260920124200-e98112b
   - name: ghcr.io/kaese72/chatbot
     newName: ghcr.io/kaese72/chatbot-development
     newTag: v0.0.2-20260814203954-16c7bad
