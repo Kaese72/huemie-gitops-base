@@ -34,7 +34,7 @@ images:
     newTag: v0.0.1-20260920124200-e98112b
   - name: ghcr.io/kaese72/chatbot
     newName: ghcr.io/kaese72/chatbot-development
-    newTag: v0.0.2-20260814203954-16c7bad
+    newTag: v0.0.2-20260920124425-ca33762
   - name: ghcr.io/kaese72/chatbot-migrater
     newName: ghcr.io/kaese72/chatbot-migrater-development
-    newTag: v0.0.2-20260814203951-16c7bad
+    newTag: v0.0.2-20260920124426-ca33762
