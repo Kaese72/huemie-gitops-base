@@ -10,7 +10,7 @@ images:
     newTag: v0.0.6-20260927103932-dcab5ce
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.6-20260927103933-dcab5ce
+    newTag: v0.0.6-20260927180444-eb9f1bb
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
     newTag: v0.0.65-20260927164332-85cf62e
@@ -22,19 +22,19 @@ images:
     newTag: v0.0.6-20260927164200-9c8f593
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
-    newTag: v0.0.21-20260927104838-ba4abca
+    newTag: v0.0.21-20260927180314-00e062e
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
-    newTag: v0.0.21-20260927104835-ba4abca
+    newTag: v0.0.21-20260927180313-00e062e
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
-    newTag: v0.0.1-20260927104815-048d35a
+    newTag: v0.0.2-20260927180351-cba37ee
   - name: ghcr.io/kaese72/ittt-orchestrator-migrater
     newName: ghcr.io/kaese72/ittt-orchestrator-migrater-development
-    newTag: v0.0.1-20260927104815-048d35a
+    newTag: v0.0.2-20260927180350-cba37ee
   - name: ghcr.io/kaese72/chatbot
     newName: ghcr.io/kaese72/chatbot-development
-    newTag: v0.0.2-20260920124425-ca33762
+    newTag: v0.0.2-20260927180320-e418432
   - name: ghcr.io/kaese72/chatbot-migrater
     newName: ghcr.io/kaese72/chatbot-migrater-development
-    newTag: v0.0.2-20260920124426-ca33762
+    newTag: v0.0.2-20260927180322-e418432
