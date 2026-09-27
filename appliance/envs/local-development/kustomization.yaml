@@ -10,7 +10,7 @@ images:
     newTag: v0.0.6-20260927103932-dcab5ce
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.6-20260927103933-dcab5ce
+    newTag: v0.0.6-20260927180444-eb9f1bb
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
     newTag: v0.0.65-20260927164332-85cf62e
