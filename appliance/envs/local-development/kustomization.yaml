@@ -7,10 +7,10 @@ resources:
 images:
   - name: ghcr.io/kaese72/authentication
     newName: ghcr.io/kaese72/authentication-development
-    newTag: v0.0.5-20260927102952-edb9bd2
+    newTag: v0.0.6-20260927103932-dcab5ce
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.5-20260927102951-edb9bd2
+    newTag: v0.0.6-20260927103933-dcab5ce
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
     newTag: v0.0.64-20260920124149-631a32b
