@@ -19,7 +19,7 @@ images:
     newTag: v0.0.65-20260927192453-7fc4cad
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.6-20260927210256-3692ac4
+    newTag: v0.0.6-20261004133905-e58164c
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
     newTag: v0.0.21-20260927180314-00e062e
@@ -34,7 +34,7 @@ images:
     newTag: v0.0.2-20260927180350-cba37ee
   - name: ghcr.io/kaese72/chatbot
     newName: ghcr.io/kaese72/chatbot-development
-    newTag: v0.0.2-20260927180320-e418432
+    newTag: v0.0.2-20261004133921-8d109c4
   - name: ghcr.io/kaese72/chatbot-migrater
     newName: ghcr.io/kaese72/chatbot-migrater-development
-    newTag: v0.0.2-20260927180322-e418432
+    newTag: v0.0.2-20261004133924-8d109c4
