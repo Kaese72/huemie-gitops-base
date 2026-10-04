@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: authentication
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,10 +23,26 @@ spec:
         huemie-owner: core
         huemie.space/service-role: authentication
     spec:
+      serviceAccountName: authentication
       containers:
         - name: authentication
           image: ghcr.io/kaese72/authentication:v0.0.6
           env:
+            # NetworkPolicy can't reliably restrict egress straight to the
+            # apiserver's ClusterIP (kube-proxy's DNAT to the real backend
+            # happens before NetworkPolicy is enforced), so route the
+            # Kubernetes client's TokenReview traffic through
+            # kube-apiserver-proxy - a real pod, reachable with a
+            # reliably-enforceable podSelector egress rule below.
+            # KUBERNETES_SERVICE_HOST/PORT are left at their normal
+            # auto-injected values since this is a transparent HTTP CONNECT
+            # proxy: the client still dials and TLS-verifies the real
+            # apiserver address, it just tunnels through the proxy pod to
+            # get there. No Go code change needed for this: client-go's
+            # default transport honors HTTPS_PROXY the same way any
+            # net/http client does.
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
             - name: "DATABASE_HOST"
               valueFrom:
                 configMapKeyRef:
@@ -55,12 +78,25 @@ spec:
                 secretKeyRef:
                   name: authentication-secret
                   key: cloud.service-token
+            # Internal listener (port 8081): only the chatbot's own
+            # Kubernetes ServiceAccount, verified via TokenReview
+            # (huemie-lib/k8sauth), may mint an impersonation token here --
+            # that allow-list is hardcoded in authentication's main.go, not
+            # configuration, since it's a security boundary of the service.
+            - name: "INTERNAL_LISTEN_ADDR"
+              value: ":8081"
+            - name: "INTERNAL_TOKEN_AUDIENCE"
+              valueFrom:
+                configMapKeyRef:
+                  name: authentication-configmap
+                  key: internal.token-audience
           volumeMounts:
             - name: rsa-key
               mountPath: /etc/authentication
               readOnly: true
           ports:
             - containerPort: 8080
+            - containerPort: 8081
           resources:
             limits:
               cpu: 500m
@@ -75,6 +111,32 @@ spec:
             items:
               - key: private.pem
                 path: private.pem
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: authentication-tokenreview
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+rules:
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: authentication-tokenreview
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+subjects:
+  - kind: ServiceAccount
+    name: authentication
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: authentication-tokenreview
+  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: batch/v1
 kind: Job
@@ -134,9 +196,17 @@ metadata:
   name: authentication
 spec:
   ports:
-    - port: 8080
+    - name: http
+      port: 8080
       protocol: TCP
       targetPort: 8080
+    # Internal-only listener: a trusted caller's own Kubernetes
+    # ServiceAccount token in, an impersonation use-token out. Never routed
+    # by the ingress (which only targets the Service's "http" port).
+    - name: internal
+      port: 8081
+      protocol: TCP
+      targetPort: 8081
   selector:
     app: authentication
 status:
@@ -171,6 +241,11 @@ spec:
               huemie.space/service-role: chatbot
       ports:
         - port: 8080
+        # Internal listener (see the Service): only chatbot is allow-listed
+        # in authentication's main.go, but that's an application-layer
+        # check, not a network one -- this still scopes who can reach the
+        # port at all.
+        - port: 8081
   egress:
     - to:
         - namespaceSelector:
@@ -196,3 +271,18 @@ spec:
               huemie.space/service-role: cloud-connect-client
       ports:
         - port: 8081
+    # The Kubernetes API server, for the TokenReview calls
+    # huemie-lib/k8sauth makes to verify a caller's ServiceAccount token.
+    # k3s's apiserver sits behind a ClusterIP, and kube-proxy's DNAT to the
+    # real backend happens before NetworkPolicy is enforced, so an ipBlock
+    # on that ClusterIP can't be relied on to actually restrict anything -
+    # same problem adapter-attendant and appliance-registry already solved.
+    # Route through kube-apiserver-proxy instead (see
+    # ./kube-apiserver-proxy.yaml and the HTTPS_PROXY env var above), a real
+    # pod with a reliably-enforceable podSelector egress rule.
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: kube-apiserver-proxy
+      ports:
+        - port: 8080

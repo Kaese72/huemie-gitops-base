@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: chatbot
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -5,12 +12,14 @@ metadata:
   annotations:
     argocd.argoproj.io/sync-wave: "50"
 spec:
-  # Neither the Anthropic API key nor the device-store credential is
-  # deploy-time config: the Anthropic key is configured at runtime via the
-  # /chatbot-service/v0/api-keys endpoints, and the device-store credential
-  # is a self-provisioned identity set up via POST
-  # /chatbot-service/v0/identities/setup (see internal/identity and the
-  # README's architecture note on this mechanism).
+  # The Anthropic API key is not deploy-time config: it is configured at
+  # runtime via the /chatbot-service/v0/api-keys endpoints. There is no
+  # device-store credential to configure at all: the chatbot impersonates
+  # whichever user triggered the current conversation turn, authenticating
+  # to authentication's internal listener as its own Kubernetes
+  # ServiceAccount (see internal/serviceauth and the README's Identity
+  # section) -- hence serviceAccountName and the projected token volume
+  # below, instead of a setup step.
   replicas: 2
   selector:
     matchLabels:
@@ -22,6 +31,7 @@ spec:
         huemie-owner: core
         huemie.space/service-role: chatbot
     spec:
+      serviceAccountName: chatbot
       containers:
         - name: chatbot
           image: ghcr.io/kaese72/chatbot:v0.0.2
@@ -56,16 +66,21 @@ spec:
                 configMapKeyRef:
                   name: chatbot-configmap
                   key: anthropic.model
-            - name: "AUTHENTICATION_URL"
+            - name: "AUTHENTICATION_INTERNAL_URL"
               valueFrom:
                 configMapKeyRef:
                   name: chatbot-configmap
-                  key: authentication.url
+                  key: authentication.internal-url
+            - name: "SERVICE_TOKEN_PATH"
+              value: /var/run/secrets/tokens/authentication-internal
             - name: AUTH_RSA_PUBLIC_KEY_PATH
               value: /etc/auth-pubkey/public.pem
           volumeMounts:
             - name: auth-pubkey
               mountPath: /etc/auth-pubkey
+              readOnly: true
+            - name: authentication-internal-token
+              mountPath: /var/run/secrets/tokens
               readOnly: true
           ports:
             - containerPort: 8080
@@ -83,6 +98,18 @@ spec:
             items:
               - key: public.pem
                 path: public.pem
+        # Audience-bound token proving this pod's identity to authentication's
+        # internal listener (see huemie-lib/k8sauth on that side). kubelet
+        # rotates its contents in place well before expirationSeconds, which
+        # internal/serviceauth.Provider.Token relies on by re-reading the
+        # file fresh on every call rather than caching it.
+        - name: authentication-internal-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: authentication-internal
+                  audience: humi-authentication-internal
+                  expirationSeconds: 3600
 ---
 apiVersion: batch/v1
 kind: Job
@@ -197,7 +224,7 @@ spec:
             matchLabels:
               huemie.space/service-role: authentication
       ports:
-        - port: 8080
+        - port: 8081
     - to:
         - podSelector:
             matchLabels:

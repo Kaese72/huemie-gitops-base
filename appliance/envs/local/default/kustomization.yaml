@@ -23,6 +23,7 @@ configMapGenerator:
     - database.host=mariadb
     - database.user=user
     - cloud.connect-client-url=http://cloud-connect-client.huemie-local:8081
+    - internal.token-audience=humi-authentication-internal
 - name: device-store-configmap
   literals:
     - database.host=mariadb
@@ -37,7 +38,7 @@ configMapGenerator:
     - database.user=user
     - device-store.url=http://device-store.huemie-local:8080
     - anthropic.model=claude-haiku-4-5-20251001
-    - authentication.url=http://authentication.huemie-local:8080
+    - authentication.internal-url=http://authentication.huemie-local:8081
 
 secretGenerator:
 - name: cloud-connect-client-secret
@@ -69,10 +70,10 @@ secretGenerator:
     # other service in this overlay uses.
     - database.password=databaseuserpassword
     - event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
-    # Neither the Anthropic API key nor the device-store credential is
-    # deploy-time config: once chatbot is running, add an Anthropic key via
-    # POST /chatbot-service/v0/api-keys, and set up its own device-store
-    # identity via POST /chatbot-service/v0/identities/setup.
+    # The Anthropic API key is not deploy-time config: once chatbot is
+    # running, add one via POST /chatbot-service/v0/api-keys. There is no
+    # device-store credential to configure -- the chatbot impersonates
+    # whichever user is driving the conversation (see internal/serviceauth).
 
 resources:
  - namespace.yaml
