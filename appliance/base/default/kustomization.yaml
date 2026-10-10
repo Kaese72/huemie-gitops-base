@@ -1,6 +1,7 @@
 resources:
   - adapter-attendant.yaml
   - auth-keypair-bootstrap.yaml
+  - auth-refresh-secret-bootstrap.yaml
   - authentication.yaml
   - chatbot.yaml
   - device-ingest-jwt-bootstrap.yaml

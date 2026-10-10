@@ -54,16 +54,15 @@ configMapGenerator:
 # rabbitmq-users-bootstrap (../../../base/default) generate a unique random
 # value per service and patch it into these same Secrets after this
 # kustomization applies. adapter-attendant-secret, device-store-secret,
-# ittt-orchestrator-secret and cloud-connect-client-secret dropped out
-# entirely below since they had no other literal left -- those bootstrap
-# Jobs create them from scratch. authentication<->cloud-connect-client's
-# internal cloud-login call no longer uses a shared secret at all: it's now
-# a Kubernetes ServiceAccount TokenReview check (see authentication.yaml and
-# cloud-connect-client.yaml), so there's nothing to generate for it either.
+# ittt-orchestrator-secret, cloud-connect-client-secret and
+# authentication-secret dropped out entirely below since they had no other
+# literal left -- those bootstrap Jobs (plus auth-refresh-secret-bootstrap,
+# for authentication-secret's auth.refresh-secret) create them from scratch.
+# authentication<->cloud-connect-client's internal cloud-login call no
+# longer uses a shared secret at all: it's now a Kubernetes ServiceAccount
+# TokenReview check (see authentication.yaml and cloud-connect-client.yaml),
+# so there's nothing to generate for it either.
 secretGenerator:
-- name: authentication-secret
-  literals:
-    - auth.refresh-secret=supersecretrefreshsecret
 - name: chatbot-secret
   literals:
     # The Anthropic API key is not deploy-time config: once chatbot is
