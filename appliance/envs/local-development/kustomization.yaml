@@ -10,7 +10,7 @@ images:
     newTag: v0.0.7-20261010153408-509526c
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.7-20261010153409-509526c
+    newTag: v0.0.7-20261010160113-ddedd70
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
     newTag: v0.0.65-20260927192453-7fc4cad
@@ -22,10 +22,10 @@ images:
     newTag: v0.0.6-20261004135113-4bdb9df
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
-    newTag: v0.0.21-20260927180314-00e062e
+    newTag: v0.0.21-20261010160012-e5a237e
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
-    newTag: v0.0.21-20260927190114-b84478d
+    newTag: v0.0.21-20261010160011-e5a237e
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
     newTag: v0.0.2-20260927180351-cba37ee
@@ -40,7 +40,7 @@ images:
     newTag: v0.0.2-20261004142647-b0100a4
   - name: ghcr.io/kaese72/cloud-connect-client
     newName: ghcr.io/kaese72/cloud-connect-client-development
-    newTag: v0.0.7-20261010131708-022554a
+    newTag: v0.0.7-20261010160009-51ed374
   - name: ghcr.io/kaese72/cloud-connect-client-migrater
     newName: ghcr.io/kaese72/cloud-connect-client-migrater-development
-    newTag: v0.0.7-20261010131709-022554a
+    newTag: v0.0.7-20261010160010-51ed374
