@@ -15,4 +15,5 @@ Then I run the CRD updates from the GitHub repositories
 
 # Mariadb
 
-Sets up database as well as initiat permissions used by the local environment
+Sets up the database as well as the per-service users/grants every
+appliance environment uses (see mariadb-db-users-bootstrap, this directory).

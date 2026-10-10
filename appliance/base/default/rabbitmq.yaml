@@ -13,7 +13,10 @@ data:
   enabled_plugins: '[rabbitmq_management,rabbitmq_peer_discovery_k8s].'
   rabbitmq.conf: |-
     # RabbitMQ configuration options go here
-    # Only for local development:
+    # loopback_users = none makes the default guest account usable from
+    # off-node, not just localhost -- required for rabbitmq-users-bootstrap
+    # (this directory) to authenticate as guest over the network to create each
+    # consuming service's own user via the management API.
     loopback_users = none
 ---
 apiVersion: apps/v1
@@ -73,7 +76,7 @@ spec:
       volumes:
         - name: rabbitmq-config
           configMap:
-            name: rabbitmq-configmap 
+            name: rabbitmq-configmap
   volumeClaimTemplates:
     - metadata:
         name: rabbitmq-data
@@ -133,9 +136,9 @@ spec:
               huemie.space/service-role: chatbot
       ports:
         - port: 5672
-    # rabbitmq-users-bootstrap (../../../base/default) calls the management
-    # API once to create each consuming service's RabbitMQ user. guest/guest
-    # is reachable here only because loopback_users = none below.
+    # rabbitmq-users-bootstrap (this directory) calls the management API every
+    # sync to create/re-assert each consuming service's RabbitMQ user.
+    # guest/guest is reachable here only because loopback_users = none above.
     - from:
         - podSelector:
             matchLabels:

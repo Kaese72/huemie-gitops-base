@@ -1,0 +1,12 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# No namespace: field here on purpose -- each component below sets its own
+# (default -> huemie-local, adapters -> adapters). Setting it at this
+# aggregating level instead would cascade into each nested kustomization
+# and rename their own Namespace *objects* too (not just .metadata.namespace
+# on other resources), which collides adapters' own Namespace with
+# huemie-local's.
+resources:
+  - default
+  - adapters

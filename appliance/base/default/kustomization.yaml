@@ -1,15 +1,75 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+namespace: huemie-local
+
+# Stable, unhashed ConfigMap names -- same reasoning as
+# cloud/envs/hallen/kustomization.yaml, kept here for predictable names when
+# poking at the live cluster rather than because anything depends on it.
+generatorOptions:
+  disableNameSuffixHash: true
+
+configMapGenerator:
+- name: cloud-connect-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=cloudconnectclient
+    - appliance-registry.base-url=https://cloud.humi.kaese.space
+    - cloud.enroll-base-url=https://cloud.humi.kaese.space/enroll
+    - cloud.login-base-url=https://cloud.humi.kaese.space/appliance-login
+    - tunnel.allowed-host-pattern=app\.huemie\.local
+    - tunnel.local-ingress=traefik.kube-system.svc.cluster.local:80
+- name: adapter-attendant-configmap
+  literals:
+    - adapter.namespace=adapters
+    - adapters.device-store-url=http://device-store.huemie-local:8080
+    - database.host=mariadb
+    - database.user=adapterattendant
+- name: authentication-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=authentication
+    - cloud.connect-client-url=http://cloud-connect-client.huemie-local:8081
+    - internal.token-audience=humi-authentication-internal
+- name: device-store-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=devicestore
+- name: ittt-orchestrator-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=itttorchestrator
+- name: chatbot-configmap
+  literals:
+    - database.host=mariadb
+    - database.user=chatbot
+    - device-store.url=http://device-store.huemie-local:8080
+    - anthropic.model=claude-haiku-4-5-20251001
+    - authentication.internal-url=http://authentication.huemie-local:8081
+
+# No secretGenerator: every service's <service>-secret (database.password,
+# event.connectionstring, auth.refresh-secret) is created from scratch by
+# mariadb-db-users-bootstrap, rabbitmq-users-bootstrap and
+# auth-refresh-secret-bootstrap (this directory) if it doesn't already
+# exist -- none of them need a literal defined here first. The Anthropic API
+# key chatbot uses is likewise not deploy-time config: once chatbot is
+# running, add one via POST /chatbot-service/v0/api-keys.
+
 resources:
+  - namespace.yaml
   - adapter-attendant.yaml
   - auth-keypair-bootstrap.yaml
   - auth-refresh-secret-bootstrap.yaml
   - authentication.yaml
   - chatbot.yaml
+  - cloud-connect-client.yaml
   - device-ingest-jwt-bootstrap.yaml
   - device-store.yaml
   - ittt-orchestrator.yaml
   - kube-apiserver-proxy.yaml
+  - maria-db.yaml
   - mariadb-root-password-bootstrap.yaml
   - mariadb-db-users-bootstrap.yaml
+  - rabbitmq.yaml
   - rabbitmq-users-bootstrap.yaml
   - ui.yaml
   - ingress.yaml
