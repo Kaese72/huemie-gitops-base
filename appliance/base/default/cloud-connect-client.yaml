@@ -33,8 +33,13 @@ spec:
             # happens before NetworkPolicy is enforced), so route the
             # Kubernetes client's TokenReview traffic through
             # kube-apiserver-proxy - same pattern as authentication.yaml and
-            # adapter-attendant.yaml.
-            - name: HTTPS_PROXY
+            # adapter-attendant.yaml. Deliberately NOT the generic HTTPS_PROXY
+            # env var: this process also calls appliance-registry and the
+            # rest of the cloud directly (APPLIANCE_REGISTRY_BASE_URL etc
+            # below), and a blanket HTTPS_PROXY would silently route that
+            # traffic through this apiserver-only proxy too, which refuses to
+            # CONNECT anywhere else - see huemie-lib/k8sauth.NewInClusterClientset.
+            - name: KUBERNETES_APISERVER_PROXY_URL
               value: http://kube-apiserver-proxy:6443
             - name: DATABASE_HOST
               valueFrom:
@@ -261,8 +266,8 @@ spec:
     # The Kubernetes API server, for the TokenReview calls huemie-lib/k8sauth
     # makes to verify a caller's ServiceAccount token on the internal
     # cloud-login listener. Same kube-apiserver-proxy routing as
-    # authentication.yaml and adapter-attendant.yaml -- see the HTTPS_PROXY
-    # env var above for why.
+    # authentication.yaml and adapter-attendant.yaml -- see the
+    # KUBERNETES_APISERVER_PROXY_URL env var above for why.
     - to:
         - podSelector:
             matchLabels:

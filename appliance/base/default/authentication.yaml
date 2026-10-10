@@ -38,10 +38,12 @@ spec:
             # auto-injected values since this is a transparent HTTP CONNECT
             # proxy: the client still dials and TLS-verifies the real
             # apiserver address, it just tunnels through the proxy pod to
-            # get there. No Go code change needed for this: client-go's
-            # default transport honors HTTPS_PROXY the same way any
-            # net/http client does.
-            - name: HTTPS_PROXY
+            # get there. Deliberately NOT the generic HTTPS_PROXY env var:
+            # this process also calls out to the cloud directly (Humi Cloud
+            # login), and a blanket HTTPS_PROXY would silently route that
+            # traffic through this apiserver-only proxy too, which refuses to
+            # CONNECT anywhere else - see huemie-lib/k8sauth.NewInClusterClientset.
+            - name: KUBERNETES_APISERVER_PROXY_URL
               value: http://kube-apiserver-proxy:6443
             - name: "DATABASE_HOST"
               valueFrom:
@@ -296,8 +298,9 @@ spec:
     # on that ClusterIP can't be relied on to actually restrict anything -
     # same problem adapter-attendant and appliance-registry already solved.
     # Route through kube-apiserver-proxy instead (see
-    # ./kube-apiserver-proxy.yaml and the HTTPS_PROXY env var above), a real
-    # pod with a reliably-enforceable podSelector egress rule.
+    # ./kube-apiserver-proxy.yaml and the KUBERNETES_APISERVER_PROXY_URL env
+    # var above), a real pod with a reliably-enforceable podSelector egress
+    # rule.
     - to:
         - podSelector:
             matchLabels:

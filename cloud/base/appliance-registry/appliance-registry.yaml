@@ -124,10 +124,12 @@ spec:
             # are left at their normal auto-injected values - this is a
             # transparent HTTP CONNECT proxy, so client-go still dials and
             # TLS-verifies the real apiserver address, it just tunnels
-            # through the proxy pod to get there. No Go code needed this:
-            # client-go's default transport honors HTTPS_PROXY the same
-            # way any net/http client does.
-            - name: HTTPS_PROXY
+            # through the proxy pod to get there. Deliberately NOT the
+            # generic HTTPS_PROXY env var: a blanket HTTPS_PROXY would
+            # silently route any other outbound HTTPS call this process
+            # makes through this apiserver-only proxy too, which refuses to
+            # CONNECT anywhere else - see k8ssecrets.NewSecretWriter.
+            - name: KUBERNETES_APISERVER_PROXY_URL
               value: http://kube-apiserver-proxy:6443
             - name: "DATABASE_HOST"
               value: "mariadb.data.svc.cluster.local"
