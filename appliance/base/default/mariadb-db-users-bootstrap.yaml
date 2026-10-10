@@ -73,7 +73,7 @@ spec:
       # curl-container split.
       initContainers:
         - name: decide-credentials
-          image: alpine/k8s:1.37.0
+          image: alpine/k8s:1.37.1
           imagePullPolicy: IfNotPresent
           # Per service: if its <service>-secret already has a
           # "database.password" key, that existing value is reused as-is
