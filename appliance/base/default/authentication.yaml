@@ -66,18 +66,18 @@ spec:
             - name: "AUTH_RSA_PRIVATE_KEY_PATH"
               value: /etc/authentication/private.pem
             # "Log in with Humi Cloud" goes through cloud-connect-client's
-            # internal listener. Must be one of that service's
-            # auth.internal-service-tokens.
+            # internal listener, authenticated as this pod's own Kubernetes
+            # ServiceAccount (see the projected-token volume below) --
+            # verified there via TokenReview, the same mechanism chatbot
+            # uses against this service's own internal listener. No static
+            # shared secret.
             - name: "CLOUD_CONNECT_CLIENT_URL"
               valueFrom:
                 configMapKeyRef:
                   name: authentication-configmap
                   key: cloud.connect-client-url
-            - name: "CLOUD_SERVICE_TOKEN"
-              valueFrom:
-                secretKeyRef:
-                  name: authentication-secret
-                  key: cloud.service-token
+            - name: "CLOUD_SERVICE_ACCOUNT_TOKEN_PATH"
+              value: /var/run/secrets/tokens/cloud-connect-client-internal
             # Internal listener (port 8081): only the chatbot's own
             # Kubernetes ServiceAccount, verified via TokenReview
             # (huemie-lib/k8sauth), may mint an impersonation token here --
@@ -93,6 +93,9 @@ spec:
           volumeMounts:
             - name: rsa-key
               mountPath: /etc/authentication
+              readOnly: true
+            - name: cloud-connect-client-internal-token
+              mountPath: /var/run/secrets/tokens
               readOnly: true
           ports:
             - containerPort: 8080
@@ -111,6 +114,21 @@ spec:
             items:
               - key: private.pem
                 path: private.pem
+        # Audience-bound token proving this pod's identity to
+        # cloud-connect-client's internal listener (see
+        # huemie-lib/k8sauth on that side). kubelet rotates its contents in
+        # place well before expirationSeconds, which
+        # internal/cloudclient.httpClient.do relies on by re-reading the
+        # file fresh on every call rather than caching it. Audience must
+        # match cloud-connect-client's internal.token-audience default
+        # ("humi-cloud-connect-client-internal").
+        - name: cloud-connect-client-internal-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: cloud-connect-client-internal
+                  audience: humi-cloud-connect-client-internal
+                  expirationSeconds: 3600
 ---
 apiVersion: rbac.authorization.k8s.io/v1
 kind: ClusterRole

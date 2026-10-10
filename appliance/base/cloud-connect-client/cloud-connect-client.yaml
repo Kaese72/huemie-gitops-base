@@ -1,3 +1,10 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: cloud-connect-client
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+---
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -16,10 +23,19 @@ spec:
         huemie-owner: core
         huemie.space/service-role: cloud-connect-client
     spec:
+      serviceAccountName: cloud-connect-client
       containers:
         - name: cloud-connect-client
           image: ghcr.io/kaese72/cloud-connect-client:v0.0.7
           env:
+            # NetworkPolicy can't reliably restrict egress straight to the
+            # apiserver's ClusterIP (kube-proxy's DNAT to the real backend
+            # happens before NetworkPolicy is enforced), so route the
+            # Kubernetes client's TokenReview traffic through
+            # kube-apiserver-proxy - same pattern as authentication.yaml and
+            # adapter-attendant.yaml.
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
             - name: DATABASE_HOST
               valueFrom:
                 configMapKeyRef:
@@ -52,14 +68,6 @@ spec:
                 configMapKeyRef:
                   name: cloud-connect-configmap
                   key: cloud.login-base-url
-            # Comma-separated bearer token(s) the authentication service uses
-            # on the internal-only cloud-login listener (port 8081). Must
-            # include authentication-secret's cloud.service-token.
-            - name: AUTH_INTERNAL_SERVICE_TOKENS
-              valueFrom:
-                secretKeyRef:
-                  name: cloud-connect-client-secret
-                  key: auth.internal-service-tokens
             - name: TUNNEL_ALLOWED_HOST_PATTERN
               valueFrom:
                 configMapKeyRef:
@@ -94,6 +102,32 @@ spec:
             items:
               - key: public.pem
                 path: public.pem
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRole
+metadata:
+  name: cloud-connect-client-tokenreview
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+rules:
+  - apiGroups: ["authentication.k8s.io"]
+    resources: ["tokenreviews"]
+    verbs: ["create"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: ClusterRoleBinding
+metadata:
+  name: cloud-connect-client-tokenreview
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+subjects:
+  - kind: ServiceAccount
+    name: cloud-connect-client
+    namespace: default
+roleRef:
+  kind: ClusterRole
+  name: cloud-connect-client-tokenreview
+  apiGroup: rbac.authorization.k8s.io
 ---
 apiVersion: batch/v1
 kind: Job
@@ -224,6 +258,17 @@ spec:
               huemie.space/service-role: mariadb
       ports:
         - port: 3306
+    # The Kubernetes API server, for the TokenReview calls huemie-lib/k8sauth
+    # makes to verify a caller's ServiceAccount token on the internal
+    # cloud-login listener. Same kube-apiserver-proxy routing as
+    # authentication.yaml and adapter-attendant.yaml -- see the HTTPS_PROXY
+    # env var above for why.
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: kube-apiserver-proxy
+      ports:
+        - port: 8080
     # Outbound tunnel connection to the cloud server (HTTPS/WSS), and the
     # server-to-server enrollment redeem call to appliance-registry - both
     # plain outbound internet HTTPS, independent of each other.
