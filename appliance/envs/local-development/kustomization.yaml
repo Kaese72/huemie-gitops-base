@@ -38,3 +38,9 @@ images:
   - name: ghcr.io/kaese72/chatbot-migrater
     newName: ghcr.io/kaese72/chatbot-migrater-development
     newTag: v0.0.2-20261004142647-b0100a4
+  - name: ghcr.io/kaese72/cloud-connect-client
+    newName: ghcr.io/kaese72/cloud-connect-client-development
+    newTag: v0.0.7-20261010123812-5745d5c
+  - name: ghcr.io/kaese72/cloud-connect-client-migrater
+    newName: ghcr.io/kaese72/cloud-connect-client-migrater-development
+    newTag: v0.0.7-20261010123813-5745d5c
