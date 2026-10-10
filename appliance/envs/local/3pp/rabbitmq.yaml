@@ -6,7 +6,11 @@ metadata:
 data:
   definitions.json: |-
     # RabbitMQ definitions go here
-  enabled_plugins: '[rabbitmq_peer_discovery_k8s].'
+  # This mounts over the whole /etc/rabbitmq directory, replacing the
+  # rabbitmq:3-management image's own default enabled_plugins file --
+  # rabbitmq_management must be listed explicitly here, or the management
+  # HTTP API (port 15672) silently never starts.
+  enabled_plugins: '[rabbitmq_management,rabbitmq_peer_discovery_k8s].'
   rabbitmq.conf: |-
     # RabbitMQ configuration options go here
     # Only for local development:

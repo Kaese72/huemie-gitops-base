@@ -5,14 +5,11 @@ data:
 kind: ConfigMap
 metadata:
   name: mariadb-config
-# mariadb-root-password (Secret) is intentionally not defined here anymore --
-# mariadb-root-password-bootstrap (../../../base/default) generates it with a
-# random value and is waved to run before the Deployment below ever starts
-# (see its sync-wave). Per-service MariaDB users/databases aren't seeded via
-# a docker-entrypoint-initdb.d script either: mariadb-db-users-bootstrap
-# (same directory) connects to the live server after it's up and runs
-# CREATE USER/GRANT directly, every sync -- so there's no shared bootstrap
-# 'user', and no "only works against a brand-new PVC" limitation.
+# mariadb-root-password-bootstrap (../../../base/default) generates the root
+# password and is waved to run before the Deployment below ever starts (see
+# its sync-wave). mariadb-db-users-bootstrap (same directory) connects to the
+# live server afterwards and runs CREATE USER/GRANT for each consuming
+# service, every sync.
 ---
 apiVersion: v1
 kind: PersistentVolumeClaim
