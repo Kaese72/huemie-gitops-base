@@ -87,5 +87,11 @@ spec:
         - podSelector:
             matchLabels:
               huemie.space/service-role: authentication
+        # cloud-connect-client's internal cloud-login listener calls the
+        # TokenReview API (huemie-lib/k8sauth) to verify authentication's own
+        # ServiceAccount, same pattern as authentication and adapter-attendant.
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: cloud-connect-client
       ports:
         - port: 8080
