@@ -171,6 +171,7 @@ spec:
               while read -r DB DB_USER PASSWORD; do
                 mariadb -h mariadb -u root --silent --skip-column-names -e "
                   CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${PASSWORD}';
+                  ALTER USER '${DB_USER}'@'%' IDENTIFIED BY '${PASSWORD}';
                   CREATE DATABASE IF NOT EXISTS ${DB};
                   GRANT ALL PRIVILEGES ON ${DB}.* TO '${DB_USER}'@'%';
                   FLUSH PRIVILEGES;
