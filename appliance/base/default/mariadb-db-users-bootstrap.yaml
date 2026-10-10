@@ -1,0 +1,193 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: mariadb-db-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: mariadb-db-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - adapter-attendant-secret
+      - authentication-secret
+      - chatbot-secret
+      - device-store-secret
+      - ittt-orchestrator-secret
+      - cloud-connect-client-secret
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: mariadb-db-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: mariadb-db-users-bootstrap
+roleRef:
+  kind: Role
+  name: mariadb-db-users-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: mariadb-db-users-bootstrap
+  labels:
+    app: mariadb-db-users-bootstrap
+  annotations:
+    # Must run after the mariadb Deployment (../../envs/local/3pp/maria-db.yaml,
+    # wave 30) is up -- unlike the old init.sql approach, this connects to
+    # the live server, so it needs it already running rather than the other
+    # way around.
+    argocd.argoproj.io/sync-wave: "32"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: mariadb-db-users-bootstrap
+        # Matched by mariadb's NetworkPolicy to allow this Job onto port
+        # 3306 -- see ../../envs/local/3pp/maria-db.yaml.
+        huemie.space/service-role: mariadb-db-users-bootstrap
+    spec:
+      serviceAccountName: mariadb-db-users-bootstrap
+      # Split across two containers so neither image has to install a tool
+      # it doesn't ship with: decide-credentials (kubectl, no SQL client)
+      # talks to the Kubernetes API only; configure-mariadb (the mariadb
+      # client, no kubectl) talks to the live database only. Same shape as
+      # rabbitmq-users-bootstrap.yaml's kubectl-initContainer ->
+      # curl-container split.
+      initContainers:
+        - name: decide-credentials
+          image: alpine/k8s:1.37.0
+          imagePullPolicy: IfNotPresent
+          # Per service: if its <service>-secret already has a
+          # "database.password" key, that existing value is reused as-is
+          # (so an already-provisioned MariaDB user is never left
+          # mismatched with its secret) and handed to the sibling container
+          # below to re-assert unchanged; only a service with no password
+          # yet gets a freshly generated one, written to the secret here.
+          # Add a new add_service line below for a new service and it is
+          # provisioned on the next sync -- including against an
+          # already-running appliance, not just a fresh install.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+
+              get_existing_value() {
+                SECRET_NAME=$1
+                KEY=$2
+                kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data['$KEY']}" 2>/dev/null | base64 -d 2>/dev/null || true
+              }
+
+              put_secret_value() {
+                SECRET_NAME=$1
+                KEY=$2
+                VALUE=$3
+                if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                  ENC=$(printf '%s' "$VALUE" | base64 | tr -d '\n')
+                  kubectl patch secret "$SECRET_NAME" -n "$NAMESPACE" --type=merge -p "{\"data\":{\"$KEY\":\"$ENC\"}}"
+                else
+                  kubectl create secret generic "$SECRET_NAME" -n "$NAMESPACE" --from-literal="$KEY=$VALUE"
+                fi
+              }
+
+              : > /work/mariadb-creds.txt
+
+              add_service() {
+                SECRET_NAME=$1
+                DB=$2
+                DB_USER=$3
+
+                PASSWORD=$(get_existing_value "$SECRET_NAME" "database.password")
+                if [ -z "$PASSWORD" ]; then
+                  PASSWORD=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-Z0-9' | head -c 32)
+                  put_secret_value "$SECRET_NAME" "database.password" "$PASSWORD"
+                  echo "generated new database.password for $SECRET_NAME"
+                fi
+
+                echo "${DB} ${DB_USER} ${PASSWORD}" >> /work/mariadb-creds.txt
+              }
+
+              # Add a line here for every new service that needs its own MariaDB user.
+              add_service adapter-attendant-secret adapterattendant adapterattendant
+              add_service authentication-secret authentication authentication
+              add_service chatbot-secret chatbot chatbot
+              add_service device-store-secret devicestore devicestore
+              add_service ittt-orchestrator-secret itttorchestrator itttorchestrator
+              add_service cloud-connect-client-secret cloudconnectclient cloudconnectclient
+          volumeMounts:
+            - name: creds
+              mountPath: /work
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+      containers:
+        - name: configure-mariadb
+          # Same tag as the server (../../envs/local/3pp/maria-db.yaml) purely to
+          # keep the client in step with it -- not a hard requirement, the
+          # mariadb client is compatible across nearby versions.
+          image: mariadb:11.8.9
+          imagePullPolicy: IfNotPresent
+          # Idempotent upsert against the live server for every service
+          # decide-credentials wrote to the shared file above -- whether its
+          # password was just reused or freshly generated, this always
+          # runs. CREATE USER IF NOT EXISTS/CREATE DATABASE IF NOT
+          # EXISTS/GRANT are themselves idempotent, so re-asserting an
+          # already-provisioned service's statements every sync is a no-op.
+          env:
+            - name: MYSQL_PWD
+              valueFrom:
+                secretKeyRef:
+                  name: mariadb-root-password
+                  key: password
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              while read -r DB DB_USER PASSWORD; do
+                mariadb -h mariadb -u root --silent --skip-column-names -e "
+                  CREATE USER IF NOT EXISTS '${DB_USER}'@'%' IDENTIFIED BY '${PASSWORD}';
+                  CREATE DATABASE IF NOT EXISTS ${DB};
+                  GRANT ALL PRIVILEGES ON ${DB}.* TO '${DB_USER}'@'%';
+                  FLUSH PRIVILEGES;
+                "
+              done < /work/mariadb-creds.txt
+          volumeMounts:
+            - name: creds
+              mountPath: /work
+              readOnly: true
+          resources:
+            limits:
+              cpu: 250m
+              memory: 128M
+            requests:
+              cpu: 100m
+              memory: 64M
+      volumes:
+        - name: creds
+          emptyDir: {}
+      restartPolicy: Never

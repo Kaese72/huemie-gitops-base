@@ -2,11 +2,19 @@ apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
 namespace: huemie-local
 
+# Stable, unhashed names: mariadb-db-users-bootstrap and
+# rabbitmq-users-bootstrap (see ../../../base/default) patch per-service
+# credentials into these Secrets by their literal name via plain kubectl
+# commands, which have no visibility into kustomize's generated name-suffix
+# hash. Same reasoning as cloud/envs/hallen/kustomization.yaml.
+generatorOptions:
+  disableNameSuffixHash: true
+
 configMapGenerator:
 - name: cloud-connect-configmap
   literals:
     - database.host=mariadb
-    - database.user=user
+    - database.user=cloudconnectclient
     - appliance-registry.base-url=https://cloud.humi.kaese.space
     - cloud.enroll-base-url=https://cloud.humi.kaese.space/enroll
     - cloud.login-base-url=https://cloud.humi.kaese.space/appliance-login
@@ -17,63 +25,58 @@ configMapGenerator:
     - adapter.namespace=adapters
     - adapters.device-store-url=http://device-store.huemie-local:8080
     - database.host=mariadb
-    - database.user=user
+    - database.user=adapterattendant
 - name: authentication-configmap
   literals:
     - database.host=mariadb
-    - database.user=user
+    - database.user=authentication
     - cloud.connect-client-url=http://cloud-connect-client.huemie-local:8081
     - internal.token-audience=humi-authentication-internal
 - name: device-store-configmap
   literals:
     - database.host=mariadb
-    - database.user=user
+    - database.user=devicestore
 - name: ittt-orchestrator-configmap
   literals:
     - database.host=mariadb
-    - database.user=user
+    - database.user=itttorchestrator
 - name: chatbot-configmap
   literals:
     - database.host=mariadb
-    - database.user=user
+    - database.user=chatbot
     - device-store.url=http://device-store.huemie-local:8080
     - anthropic.model=claude-haiku-4-5-20251001
     - authentication.internal-url=http://authentication.huemie-local:8081
 
+# database.password (every service), database.event.connectionstring
+# (device-store) and event.connectionstring (ittt-orchestrator, chatbot) are
+# no longer literals here -- mariadb-db-users-bootstrap and
+# rabbitmq-users-bootstrap (../../../base/default) generate a unique random
+# value per service and patch it into these same Secrets after this
+# kustomization applies. adapter-attendant-secret, device-store-secret and
+# ittt-orchestrator-secret dropped out entirely below since they had no
+# other literal left -- those bootstrap Jobs create them from scratch.
 secretGenerator:
 - name: cloud-connect-client-secret
   literals:
-    - database.password=databaseuserpassword
     # Only reachable on the internal-only listener (see the Deployment), so
     # a fixed local value is acceptable here like the other local secrets.
     # Must match authentication-secret's cloud.service-token.
     - auth.internal-service-tokens=localcloudloginservicetoken
-- name: adapter-attendant-secret
-  literals:
-    - database.password=databaseuserpassword
 - name: authentication-secret
   literals:
-    - database.password=databaseuserpassword
     - auth.refresh-secret=supersecretrefreshsecret
     - cloud.service-token=localcloudloginservicetoken
-- name: device-store-secret
-  literals:
-    - database.password=databaseuserpassword
-    - database.event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
-- name: ittt-orchestrator-secret
-  literals:
-    - database.password=databaseuserpassword
-    - event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
 - name: chatbot-secret
   literals:
-    # Real, working local values -- same shared MariaDB/RabbitMQ every
-    # other service in this overlay uses.
-    - database.password=databaseuserpassword
-    - event.connectionstring=amqp://guest:guest@rabbitmq-headless:5672/
     # The Anthropic API key is not deploy-time config: once chatbot is
     # running, add one via POST /chatbot-service/v0/api-keys. There is no
     # device-store credential to configure -- the chatbot impersonates
     # whichever user is driving the conversation (see internal/serviceauth).
+    - placeholder=unused
+    # ^ secretGenerator needs at least one literal; this key is never read
+    # by anything. Remove it if chatbot-secret ever gets a real static
+    # literal of its own again.
 
 resources:
  - namespace.yaml

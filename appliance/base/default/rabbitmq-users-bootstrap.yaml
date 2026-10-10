@@ -1,0 +1,185 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: rabbitmq-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: rabbitmq-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames:
+      - device-store-secret
+      - ittt-orchestrator-secret
+      - chatbot-secret
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: rabbitmq-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: rabbitmq-users-bootstrap
+roleRef:
+  kind: Role
+  name: rabbitmq-users-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: rabbitmq-users-bootstrap
+  labels:
+    app: rabbitmq-users-bootstrap
+  annotations:
+    # Waved after mariadb-db-users-bootstrap (wave 20) and the mariadb
+    # Deployment (wave 30) purely to keep bootstrap Jobs from racing each
+    # other; what this Job actually needs ready is RabbitMQ (../../envs/local/3pp,
+    # unwaved/default wave 0), which ArgoCD already guarantees is Synced+Healthy
+    # (readinessProbe passing) before wave 35 starts.
+    argocd.argoproj.io/sync-wave: "35"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: rabbitmq-users-bootstrap
+        # Matched by rabbitmq's NetworkPolicy to allow this Job onto the
+        # management port -- see ../../envs/local/3pp/rabbitmq.yaml.
+        huemie.space/service-role: rabbitmq-users-bootstrap
+    spec:
+      serviceAccountName: rabbitmq-users-bootstrap
+      # Runs on every sync, not just once. Split across two containers so
+      # neither image has to apt/apk-install a tool it doesn't ship with:
+      # decide-credentials (kubectl, no HTTP client) talks to the
+      # Kubernetes API only; configure-rabbitmq (curl, no kubectl) talks to
+      # RabbitMQ's management API only. They hand off through the shared
+      # "creds" emptyDir, same shape as auth-keypair-bootstrap.yaml's
+      # openssl-initContainer -> kubectl-container split.
+      initContainers:
+        - name: decide-credentials
+          image: alpine/k8s:1.37.0
+          imagePullPolicy: IfNotPresent
+          # Per service: if its <service>-secret already has a
+          # connection-string key, the existing password is parsed back out
+          # of it and reused (so this never silently rotates a service's
+          # RabbitMQ password out from under it) and written straight back
+          # unchanged; only a service with no connection string yet gets a
+          # freshly generated one, which is both written to the secret here
+          # and handed to the sibling container below to actually create on
+          # RabbitMQ. Add a new add_user line below for a new service and it
+          # is provisioned on the next sync.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+
+              get_existing_password() {
+                SECRET_NAME=$1
+                KEY=$2
+                EXISTING=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data['$KEY']}" 2>/dev/null | base64 -d 2>/dev/null || true)
+                if [ -n "$EXISTING" ]; then
+                  echo "$EXISTING" | sed -E 's#^amqp://[^:]*:([^@]*)@.*$#\1#'
+                fi
+              }
+
+              put_secret_value() {
+                SECRET_NAME=$1
+                KEY=$2
+                VALUE=$3
+                if kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" >/dev/null 2>&1; then
+                  ENC=$(printf '%s' "$VALUE" | base64 | tr -d '\n')
+                  kubectl patch secret "$SECRET_NAME" -n "$NAMESPACE" --type=merge -p "{\"data\":{\"$KEY\":\"$ENC\"}}"
+                else
+                  kubectl create secret generic "$SECRET_NAME" -n "$NAMESPACE" --from-literal="$KEY=$VALUE"
+                fi
+              }
+
+              : > /work/rabbitmq-creds.txt
+
+              add_user() {
+                SECRET_NAME=$1
+                CONNSTRING_KEY=$2
+                MQ_USER=$3
+
+                PASSWORD=$(get_existing_password "$SECRET_NAME" "$CONNSTRING_KEY")
+                if [ -z "$PASSWORD" ]; then
+                  PASSWORD=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-Z0-9' | head -c 32)
+                  put_secret_value "$SECRET_NAME" "$CONNSTRING_KEY" "amqp://${MQ_USER}:${PASSWORD}@rabbitmq-headless:5672/"
+                  echo "generated new rabbitmq password for ${MQ_USER}"
+                fi
+
+                echo "${MQ_USER} ${PASSWORD}" >> /work/rabbitmq-creds.txt
+              }
+
+              # Add a line here for every new service that needs its own RabbitMQ user.
+              add_user device-store-secret database.event.connectionstring devicestore
+              add_user ittt-orchestrator-secret event.connectionstring itttorchestrator
+              add_user chatbot-secret event.connectionstring chatbot
+          volumeMounts:
+            - name: creds
+              mountPath: /work
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+      containers:
+        - name: configure-rabbitmq
+          image: curlimages/curl:8.11.1
+          imagePullPolicy: IfNotPresent
+          # Idempotent upsert against RabbitMQ's management API for every
+          # user decide-credentials wrote to the shared file above --
+          # whether its password was just reused or freshly generated, this
+          # always runs, which also re-heals the user if RabbitMQ's own
+          # volume was ever wiped. Uses the cluster's own default
+          # guest/guest account -- reachable over the network only because
+          # rabbitmq.conf sets loopback_users = none (see
+          # ../../envs/local/3pp/rabbitmq.yaml).
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+              while read -r MQ_USER PASSWORD; do
+                curl -sf -u guest:guest -X PUT "http://rabbitmq-headless:15672/api/users/${MQ_USER}" \
+                  -H "content-type: application/json" \
+                  -d "{\"password\":\"${PASSWORD}\",\"tags\":\"\"}"
+                curl -sf -u guest:guest -X PUT "http://rabbitmq-headless:15672/api/permissions/%2F/${MQ_USER}" \
+                  -H "content-type: application/json" \
+                  -d '{"configure":".*","write":".*","read":".*"}'
+              done < /work/rabbitmq-creds.txt
+          volumeMounts:
+            - name: creds
+              mountPath: /work
+              readOnly: true
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+      volumes:
+        - name: creds
+          emptyDir: {}
+      restartPolicy: Never

@@ -129,6 +129,15 @@ spec:
               huemie.space/service-role: chatbot
       ports:
         - port: 5672
+    # rabbitmq-users-bootstrap (../../../base/default) calls the management
+    # API once to create each consuming service's RabbitMQ user. guest/guest
+    # is reachable here only because loopback_users = none below.
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: rabbitmq-users-bootstrap
+      ports:
+        - port: 15672
   egress:
     - to:
         - namespaceSelector:

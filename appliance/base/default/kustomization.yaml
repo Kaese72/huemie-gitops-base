@@ -7,5 +7,8 @@ resources:
   - device-store.yaml
   - ittt-orchestrator.yaml
   - kube-apiserver-proxy.yaml
+  - mariadb-root-password-bootstrap.yaml
+  - mariadb-db-users-bootstrap.yaml
+  - rabbitmq-users-bootstrap.yaml
   - ui.yaml
   - ingress.yaml
