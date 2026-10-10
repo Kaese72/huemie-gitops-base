@@ -149,7 +149,7 @@ spec:
           # Same tag as the server (../../envs/local/3pp/maria-db.yaml) purely to
           # keep the client in step with it -- not a hard requirement, the
           # mariadb client is compatible across nearby versions.
-          image: mariadb:11.8.9
+          image: mariadb:13.0.2
           imagePullPolicy: IfNotPresent
           # Idempotent upsert against the live server for every service
           # decide-credentials wrote to the shared file above -- whether its
