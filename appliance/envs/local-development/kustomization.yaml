@@ -10,7 +10,7 @@ images:
     newTag: v0.0.7-20261010123451-4947b7d
   - name: ghcr.io/kaese72/authentication-migrater
     newName: ghcr.io/kaese72/authentication-migrater-development
-    newTag: v0.0.7-20261010123451-4947b7d
+    newTag: v0.0.7-20261010131750-1290cdc
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
     newTag: v0.0.65-20260927192453-7fc4cad
@@ -40,7 +40,7 @@ images:
     newTag: v0.0.2-20261004142647-b0100a4
   - name: ghcr.io/kaese72/cloud-connect-client
     newName: ghcr.io/kaese72/cloud-connect-client-development
-    newTag: v0.0.7-20261010123812-5745d5c
+    newTag: v0.0.7-20261010131708-022554a
   - name: ghcr.io/kaese72/cloud-connect-client-migrater
     newName: ghcr.io/kaese72/cloud-connect-client-migrater-development
-    newTag: v0.0.7-20261010123813-5745d5c
+    newTag: v0.0.7-20261010131709-022554a
