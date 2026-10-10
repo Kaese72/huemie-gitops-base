@@ -145,7 +145,7 @@ spec:
               memory: 16M
       containers:
         - name: configure-rabbitmq
-          image: curlimages/curl:8.11.1
+          image: curlimages/curl:8.22.0
           imagePullPolicy: IfNotPresent
           # Idempotent upsert against RabbitMQ's management API for every
           # user decide-credentials wrote to the shared file above --
