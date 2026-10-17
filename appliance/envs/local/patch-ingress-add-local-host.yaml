@@ -3,4 +3,4 @@
   path: /spec/rules/1
 - op: replace
   path: /spec/rules/1/host
-  value: local.huemie.space
+  value: humi.dev.kaese.space

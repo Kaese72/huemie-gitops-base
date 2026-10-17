@@ -16,7 +16,7 @@ configMapGenerator:
     - appliance-registry.base-url=https://cloud.humi.kaese.space
     - cloud.enroll-base-url=https://cloud.humi.kaese.space/enroll
     - cloud.login-base-url=https://cloud.humi.kaese.space/appliance-login
-    - tunnel.allowed-host-pattern=app\.huemie\.local
+    - tunnel.allowed-host-pattern=app\.humi\.internal
     - tunnel.local-ingress=traefik.kube-system.svc.cluster.local:80
 - name: adapter-attendant-configmap
   literals:

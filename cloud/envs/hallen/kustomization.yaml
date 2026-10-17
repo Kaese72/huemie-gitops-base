@@ -8,7 +8,7 @@ configMapGenerator:
     # The Host header value cloud nginx sets on all proxied traffic so the
     # appliance-side ingress can route it. Must match an ingress rule hostname
     # on the appliance cluster.
-    - internal.host=app.huemie.local
+    - internal.host=app.humi.internal
 
 # cloud-connect-configmap needs a stable, unhashed name: it's read by every
 # per-appliance cloud-connect-server-<id> Deployment the

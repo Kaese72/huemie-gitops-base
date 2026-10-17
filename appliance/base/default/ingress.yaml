@@ -66,6 +66,6 @@ spec:
                 name: huemie-ui
                 port:
                   number: 80
-    - host: app.huemie.local
+    - host: app.humi.internal
       http:
         paths: *shared_paths
