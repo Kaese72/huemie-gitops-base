@@ -5,11 +5,15 @@ metadata:
   name: huemie-ingress
   annotations:
     argocd.argoproj.io/sync-wave: "70"
+    # Redirect plain HTTP to HTTPS.
+    traefik.ingress.kubernetes.io/router.middlewares: huemie-local-redirect-https@kubernetescrd
 spec:
   rules:
-    - host: app.huemie.space
-      http:
-        paths: &shared_paths
+    # No host: matches requests for any hostname (LAN names, the appliance's
+    # IP, ...). Overlays may set one. huemie-tunnel-ingress below still wins
+    # for app.humi.internal, since host rules take precedence.
+    - http:
+        paths:
           - path: /authentication-service
             pathType: Prefix
             backend:
@@ -66,6 +70,86 @@ spec:
                 name: huemie-ui
                 port:
                   number: 80
+---
+# Tunnel traffic from cloud-connect-client arrives over plain HTTP on
+# traefik's "web" port (TLS is terminated in the cloud), so this host lives in
+# its own Ingress without the HTTPS redirect. Keep the paths in sync with
+# huemie-ingress above.
+apiVersion: networking.k8s.io/v1
+kind: Ingress
+metadata:
+  name: huemie-tunnel-ingress
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  rules:
     - host: app.humi.internal
       http:
-        paths: *shared_paths
+        paths:
+          - path: /authentication-service
+            pathType: Prefix
+            backend:
+              service:
+                name: authentication
+                port:
+                  number: 8080
+          - path: /device-store
+            pathType: Prefix
+            backend:
+              service:
+                name: device-store
+                port:
+                  number: 8080
+          - path: /device-ingest
+            pathType: Prefix
+            backend:
+              service:
+                name: device-store
+                port:
+                  number: 8080
+          - path: /ittt-orchestrator
+            pathType: Prefix
+            backend:
+              service:
+                name: ittt-orchestrator
+                port:
+                  number: 8080
+          - path: /adapter-attendant
+            pathType: Prefix
+            backend:
+              service:
+                name: adapter-attendant
+                port:
+                  number: 8080
+          - path: /chatbot-service
+            pathType: Prefix
+            backend:
+              service:
+                name: chatbot
+                port:
+                  number: 8080
+          - path: /cloud-connect-client
+            pathType: Prefix
+            backend:
+              service:
+                name: cloud-connect-client
+                port:
+                  number: 8080
+          - path: /
+            pathType: Prefix
+            backend:
+              service:
+                name: huemie-ui
+                port:
+                  number: 80
+---
+apiVersion: traefik.io/v1alpha1
+kind: Middleware
+metadata:
+  name: redirect-https
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  redirectScheme:
+    scheme: https
+    permanent: true

@@ -10,4 +10,4 @@ patchesJson6902:
       version: v1
       kind: Ingress
       name: huemie-ingress
-    path: patch-ingress-add-local-host.yaml
+    path: patch-ingress-set-host.yaml
