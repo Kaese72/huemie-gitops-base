@@ -1,0 +1,14 @@
+apiVersion: kustomize.config.k8s.io/v1beta1
+kind: Kustomization
+
+# ArgoCD managing itself on the appliance, via application/argocd.yaml.
+# Bump the version here to upgrade every appliance's ArgoCD.
+#
+# The appliance installer (cloud-ui's static-files/appliance/installation/
+# install-appliance.sh) also greps the install.yaml URL out of this file for the
+# initial bootstrap, so keep it a single literal raw.githubusercontent.com
+# URL ending in /manifests/install.yaml.
+namespace: argocd
+
+resources:
+  - https://raw.githubusercontent.com/argoproj/argo-cd/v3.5.5/manifests/install.yaml
