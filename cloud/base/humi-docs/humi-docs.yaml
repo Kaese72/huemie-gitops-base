@@ -18,7 +18,7 @@ spec:
     spec:
       containers:
         - name: humi-docs
-          image: ghcr.io/kaese72/humi-docs:v0.0.3
+          image: ghcr.io/kaese72/humi-docs:v0.0.4
           ports:
             - containerPort: 80
           resources:
