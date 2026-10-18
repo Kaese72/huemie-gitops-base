@@ -137,6 +137,8 @@ spec:
                   PASSWORD=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
                   put_secret_value "$SECRET_NAME" "$CONNSTRING_KEY" "amqp://${MQ_USER}:${PASSWORD}@rabbitmq-headless:5672/"
                   echo "generated new rabbitmq password for ${MQ_USER}"
+                else
+                  echo "rabbitmq password already provisioned for ${MQ_USER}, reusing"
                 fi
 
                 echo "${MQ_USER} ${PASSWORD}" >> /work/rabbitmq-creds.txt

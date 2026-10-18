@@ -135,6 +135,8 @@ spec:
                   PASSWORD=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
                   put_secret_value "$SECRET_NAME" "database.password" "$PASSWORD"
                   echo "generated new database.password for $SECRET_NAME"
+                else
+                  echo "database.password already provisioned for $SECRET_NAME, reusing"
                 fi
 
                 echo "${DB} ${DB_USER} ${PASSWORD}" >> /work/mariadb-creds.txt
