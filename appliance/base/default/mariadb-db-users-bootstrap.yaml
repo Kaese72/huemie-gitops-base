@@ -92,10 +92,23 @@ spec:
 
               NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
 
+              # go-template rather than jsonpath: jsonpath's {.data['a.b']}
+              # silently returns empty for keys containing dots, which made
+              # every sync look like a fresh install and rotate every
+              # password. Only a missing secret/key counts as "not
+              # provisioned yet" -- any other error fails the Job (set -e)
+              # instead of falling through to generating a new password.
               get_existing_value() {
                 SECRET_NAME=$1
                 KEY=$2
-                kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o jsonpath="{.data['$KEY']}" 2>/dev/null | base64 -d 2>/dev/null || true
+                if ! ENC=$(kubectl get secret "$SECRET_NAME" -n "$NAMESPACE" -o go-template="{{with .data}}{{with index . \"$KEY\"}}{{.}}{{end}}{{end}}" 2>/tmp/kubectl-err); then
+                  if grep -q NotFound /tmp/kubectl-err; then
+                    return 0
+                  fi
+                  cat /tmp/kubectl-err >&2
+                  return 1
+                fi
+                printf '%s' "$ENC" | base64 -d
               }
 
               put_secret_value() {
@@ -119,7 +132,7 @@ spec:
 
                 PASSWORD=$(get_existing_value "$SECRET_NAME" "database.password")
                 if [ -z "$PASSWORD" ]; then
-                  PASSWORD=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-Z0-9' | head -c 32)
+                  PASSWORD=$(head -c 48 /dev/urandom | base64 | tr -dc 'A-Za-z0-9' | head -c 32)
                   put_secret_value "$SECRET_NAME" "database.password" "$PASSWORD"
                   echo "generated new database.password for $SECRET_NAME"
                 fi
