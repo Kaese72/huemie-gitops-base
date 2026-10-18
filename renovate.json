@@ -57,6 +57,7 @@
                 "ghcr.io/kaese72/device-store",
                 "ghcr.io/kaese72/device-store-migrater",
                 "ghcr.io/kaese72/huemie-ui",
+                "ghcr.io/kaese72/humi-docs",
                 "ghcr.io/kaese72/ittt-orchestrator",
                 "ghcr.io/kaese72/ittt-orchestrator-migrater",
                 "ghcr.io/kaese72/kube-apiserver-connect-proxy"

@@ -1,0 +1,85 @@
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: humi-docs
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
+spec:
+  replicas: 2
+  selector:
+    matchLabels:
+      app: humi-docs
+  template:
+    metadata:
+      labels:
+        app: humi-docs
+        huemie-owner: core
+        huemie.space/service-role: humi-docs
+    spec:
+      containers:
+        - name: humi-docs
+          image: ghcr.io/kaese72/humi-docs:v0.0.1
+          ports:
+            - containerPort: 80
+          resources:
+            limits:
+              cpu: 50m
+              memory: 64M
+            requests:
+              cpu: 10m
+              memory: 64M
+---
+apiVersion: v1
+kind: Service
+metadata:
+  labels:
+    app: humi-docs
+  annotations:
+    argocd.argoproj.io/sync-wave: "60"
+  name: humi-docs
+spec:
+  ports:
+    - port: 80
+      protocol: TCP
+      targetPort: 80
+  selector:
+    app: humi-docs
+status:
+  loadBalancer: {}
+---
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: humi-docs
+  annotations:
+    argocd.argoproj.io/sync-wave: "55"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: humi-docs
+  policyTypes:
+    - Ingress
+    - Egress
+  ingress:
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: traefik
+      ports:
+        - port: 80
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP

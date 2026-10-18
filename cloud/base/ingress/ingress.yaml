@@ -26,6 +26,13 @@ spec:
                 name: appliance-registry
                 port:
                   number: 8080
+          - path: /docs
+            pathType: Prefix
+            backend:
+              service:
+                name: humi-docs
+                port:
+                  number: 80
           - path: /
             pathType: Prefix
             backend:

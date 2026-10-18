@@ -26,6 +26,7 @@ resources:
   - ../../base/appliance-registry
   - ../../base/kube-apiserver-proxy
   - ../../base/cloud-ui
+  - ../../base/humi-docs
   - ../../base/ingress
 
 # No configMapGenerator/secretGenerator for cloud-user-registry's database
