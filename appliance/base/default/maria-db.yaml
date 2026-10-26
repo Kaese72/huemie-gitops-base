@@ -17,6 +17,12 @@ metadata:
   name: mariadb-pv-claim
   labels:
     app: mariadb
+  annotations:
+    # Same wave as mariadb-deployment (below). local-path is
+    # WaitForFirstConsumer, so this stays Pending -- which ArgoCD reports as
+    # Progressing -- until a pod mounts it. In an earlier wave it would block
+    # the sync forever waiting for a pod that only comes in a later wave.
+    argocd.argoproj.io/sync-wave: "30"
 spec:
   accessModes:
     - ReadWriteOnce
