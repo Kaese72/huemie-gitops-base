@@ -63,6 +63,7 @@ spec:
         # Matched by mariadb's NetworkPolicy to allow this Job onto port
         # 3306 -- see ../../envs/local/3pp/maria-db.yaml.
         huemie.space/service-role: mariadb-db-users-bootstrap
+        huemie.space/purpose: bootstrap
     spec:
       serviceAccountName: mariadb-db-users-bootstrap
       # Split across two containers so neither image has to install a tool
@@ -75,6 +76,11 @@ spec:
         - name: decide-credentials
           image: alpine/k8s:1.37.2
           imagePullPolicy: IfNotPresent
+          # The Kubernetes API only through kube-apiserver-proxy -- see
+          # ./network-policies.yaml.
+          env:
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
           # Per service: if its <service>-secret already has a
           # "database.password" key, that existing value is reused as-is
           # (so an already-provisioned MariaDB user is never left

@@ -55,12 +55,18 @@ spec:
       labels:
         app: adapter-attendant-plugin-token-bootstrap
         huemie.space/service-role: adapter-attendant-plugin-token-bootstrap
+        huemie.space/purpose: bootstrap
     spec:
       serviceAccountName: adapter-attendant-plugin-token-bootstrap
       containers:
         - name: create-secret
           image: alpine/k8s:1.37.1
           imagePullPolicy: IfNotPresent
+          # The Kubernetes API only through kube-apiserver-proxy -- see
+          # ./network-policies.yaml.
+          env:
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
           # The plugin token ArgoCD's adapters ApplicationSet presents to
           # adapter-attendant has to be in two places: adapter-attendant-secret
           # (here, what the service checks against - the same Secret

@@ -1,3 +1,23 @@
+---
+# Default deny, both directions, for every pod in adapters -- same as
+# ../default/network-policies.yaml for huemie-local. Every adapter the
+# adapters ApplicationSet deploys carries huemie.space/service-role: adapter
+# and is governed by the adapter policy below; anything else started here
+# gets no traffic at all. Waved after that policy, so the deny never lands
+# before the allow on a fresh install.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  namespace: adapters
+  annotations:
+    argocd.argoproj.io/sync-wave: "56"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:

@@ -1,0 +1,101 @@
+---
+# Default deny, both directions, for every pod in huemie-local. NetworkPolicies
+# only ever add permissions, so every pod still gets exactly what its own
+# policy allows; a pod without one gets nothing at all -- including any
+# workload added here later, until it ships its own policy.
+#
+# Last wave on purpose (the per-service policies are wave 55): on a fresh
+# install nothing may be denied before its own allow exists, e.g. the
+# migrater Jobs (wave 40) run under policies that only land at wave 55.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: default-deny
+  annotations:
+    argocd.argoproj.io/sync-wave: "56"
+spec:
+  podSelector: {}
+  policyTypes:
+    - Ingress
+    - Egress
+---
+# Every bootstrap Job (huemie.space/purpose: bootstrap): DNS, and the
+# Kubernetes API through kube-apiserver-proxy (HTTPS_PROXY on each kubectl
+# container) -- same ClusterIP/DNAT reasoning as authentication.yaml. Nothing
+# connects to a bootstrap Job.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/purpose: bootstrap
+  policyTypes:
+    - Ingress
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: kube-system
+          podSelector:
+            matchLabels:
+              k8s-app: kube-dns
+      ports:
+        - port: 53
+          protocol: UDP
+        - port: 53
+          protocol: TCP
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: kube-apiserver-proxy
+      ports:
+        - port: 8080
+---
+# mariadb-db-users-bootstrap's configure-mariadb connects as root to create
+# each service's user. mariadb's own policy (maria-db.yaml) allows it in.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: mariadb-db-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: mariadb-db-users-bootstrap
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: mariadb
+      ports:
+        - port: 3306
+---
+# rabbitmq-users-bootstrap's configure-rabbitmq calls the management API.
+# rabbitmq's own policy (rabbitmq.yaml) allows it in.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: rabbitmq-users-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+spec:
+  podSelector:
+    matchLabels:
+      huemie.space/service-role: rabbitmq-users-bootstrap
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: rabbitmq
+      ports:
+        - port: 15672

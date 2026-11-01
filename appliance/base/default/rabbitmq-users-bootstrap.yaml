@@ -61,6 +61,7 @@ spec:
         # Matched by rabbitmq's NetworkPolicy to allow this Job onto the
         # management port -- see ../../envs/local/3pp/rabbitmq.yaml.
         huemie.space/service-role: rabbitmq-users-bootstrap
+        huemie.space/purpose: bootstrap
     spec:
       serviceAccountName: rabbitmq-users-bootstrap
       # Runs on every sync, not just once. Split across two containers so
@@ -74,6 +75,11 @@ spec:
         - name: decide-credentials
           image: alpine/k8s:1.37.2
           imagePullPolicy: IfNotPresent
+          # The Kubernetes API only through kube-apiserver-proxy -- see
+          # ./network-policies.yaml.
+          env:
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
           # Per service: if its <service>-secret already has a
           # connection-string key, the existing password is parsed back out
           # of it and reused (so this never silently rotates a service's

@@ -51,6 +51,7 @@ spec:
       labels:
         app: auth-keypair-bootstrap
         huemie.space/service-role: auth-keypair-bootstrap
+        huemie.space/purpose: bootstrap
     spec:
       serviceAccountName: auth-keypair-bootstrap
       initContainers:
@@ -81,6 +82,11 @@ spec:
         - name: create-secrets
           image: alpine/k8s:1.37.2
           imagePullPolicy: IfNotPresent
+          # The Kubernetes API only through kube-apiserver-proxy -- see
+          # ./network-policies.yaml.
+          env:
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
           # Idempotent: if the auth keypair secrets already exist, does nothing.
           command:
             - /bin/sh

@@ -51,12 +51,18 @@ spec:
       labels:
         app: device-ingest-jwt-bootstrap
         huemie.space/service-role: device-ingest-jwt-bootstrap
+        huemie.space/purpose: bootstrap
     spec:
       serviceAccountName: device-ingest-jwt-bootstrap
       containers:
         - name: create-secret
           image: alpine/k8s:1.37.2
           imagePullPolicy: IfNotPresent
+          # The Kubernetes API only through kube-apiserver-proxy -- see
+          # ./network-policies.yaml.
+          env:
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
           # Idempotent: if the device-ingest JWT secret already exists, does nothing.
           command:
             - /bin/sh

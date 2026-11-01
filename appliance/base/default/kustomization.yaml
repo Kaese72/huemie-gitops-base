@@ -56,6 +56,7 @@ configMapGenerator:
 
 resources:
   - namespace.yaml
+  - network-policies.yaml
   - adapter-attendant.yaml
   - adapter-attendant-plugin-token-bootstrap.yaml
   - auth-keypair-bootstrap.yaml
