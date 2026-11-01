@@ -60,7 +60,7 @@ spec:
       serviceAccountName: adapter-attendant-plugin-token-bootstrap
       containers:
         - name: create-secret
-          image: alpine/k8s:1.37.1
+          image: alpine/k8s:1.37.2
           imagePullPolicy: IfNotPresent
           # The Kubernetes API only through kube-apiserver-proxy -- see
           # ./network-policies.yaml.
