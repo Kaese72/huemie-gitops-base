@@ -115,7 +115,7 @@ spec:
   tls:
     - hosts:
         - placeholder.appliance.humi.kaese.space
-      secretName: letsencrypt-prod
+      secretName: placeholder-cloud-connect-tls
 ---
 apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy

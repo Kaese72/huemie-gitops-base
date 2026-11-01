@@ -70,6 +70,12 @@ spec:
                 - op: replace
                   path: /spec/tls/0/hosts/0
                   value: "{{.hostname}}"
+                # One TLS Secret (and thus one cert-manager Certificate) per
+                # appliance - a shared secretName makes cert-manager's
+                # ingress-shim issue only for whichever Ingress claimed it first.
+                - op: replace
+                  path: /spec/tls/0/secretName
+                  value: "cloud-connect-tls-{{.id}}"
             - target:
                 kind: NetworkPolicy
                 name: cloud-connect-server
