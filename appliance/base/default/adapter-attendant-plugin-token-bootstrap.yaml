@@ -59,7 +59,7 @@ spec:
       serviceAccountName: adapter-attendant-plugin-token-bootstrap
       containers:
         - name: create-secret
-          image: alpine/k8s:1.37.1
+          image: alpine/k8s:1.37.2
           imagePullPolicy: IfNotPresent
           # The plugin token ArgoCD's adapters ApplicationSet presents to
           # adapter-attendant has to be in two places: adapter-attendant-secret
