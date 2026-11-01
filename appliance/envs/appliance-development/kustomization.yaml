@@ -13,13 +13,13 @@ images:
     newTag: v0.0.7-20261010160113-ddedd70
   - name: ghcr.io/kaese72/device-store
     newName: ghcr.io/kaese72/device-store-development
-    newTag: v0.0.65-20260927192453-7fc4cad
+    newTag: v0.0.67-20261101104904-0f111e7
   - name: ghcr.io/kaese72/device-store-migrater
     newName: ghcr.io/kaese72/device-store-migrater-development
-    newTag: v0.0.65-20260927192453-7fc4cad
+    newTag: v0.0.67-20261101104903-0f111e7
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.7-20261027223458-eea78d1
+    newTag: v0.0.8-20261101124126-df9d880
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
     newTag: v0.0.21-20261010160012-e5a237e
