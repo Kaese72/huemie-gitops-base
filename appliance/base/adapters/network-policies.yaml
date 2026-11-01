@@ -2,6 +2,7 @@ apiVersion: networking.k8s.io/v1
 kind: NetworkPolicy
 metadata:
   name: adapter
+  namespace: adapters
   annotations:
     argocd.argoproj.io/sync-wave: "55"
 spec:

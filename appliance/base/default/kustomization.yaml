@@ -47,16 +47,17 @@ configMapGenerator:
     - authentication.internal-url=http://authentication.huemie-local:8081
 
 # No secretGenerator: every service's <service>-secret (database.password,
-# event.connectionstring, auth.refresh-secret) is created from scratch by
-# mariadb-db-users-bootstrap, rabbitmq-users-bootstrap and
-# auth-refresh-secret-bootstrap (this directory) if it doesn't already
-# exist -- none of them need a literal defined here first. The Anthropic API
+# event.connectionstring, auth.refresh-secret, auth.plugin-tokens) is created
+# from scratch by mariadb-db-users-bootstrap, rabbitmq-users-bootstrap,
+# auth-refresh-secret-bootstrap and adapter-attendant-plugin-token-bootstrap
+# (this directory) if it doesn't already exist -- none of them need a literal defined here first. The Anthropic API
 # key chatbot uses is likewise not deploy-time config: once chatbot is
 # running, add one via POST /chatbot-service/v0/api-keys.
 
 resources:
   - namespace.yaml
   - adapter-attendant.yaml
+  - adapter-attendant-plugin-token-bootstrap.yaml
   - auth-keypair-bootstrap.yaml
   - auth-refresh-secret-bootstrap.yaml
   - authentication.yaml

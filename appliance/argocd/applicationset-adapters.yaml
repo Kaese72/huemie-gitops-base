@@ -1,0 +1,103 @@
+# Instantiates one adapter-<id> (Deployment/Service/Secret, from
+# ../base/adapter-instance) per synced adapter in adapter-attendant. The same
+# Plugin generator pattern as cloud/application-crds' cloud-connect-server
+# fleet, except that the plugin is reached in-cluster rather than over the
+# internet.
+#
+# adapter-attendant never talks to the Kubernetes API: it only answers the
+# plugin. Deploying an adapter in the UI records its image and its whole
+# environment (credentials and a fresh enroll token included), which the
+# plugin then lists here as secretData, with a sync generation that is
+# bumped on every deploy so the adapter always restarts and picks up its
+# environment. Deleting an adapter drops it from the list, and ArgoCD
+# removes its Application and resources, Secret included.
+#
+# secretData ends up in plain text on each generated Application. That's
+# acceptable while only cluster admins can read Applications - the appliance
+# doesn't expose ArgoCD at all.
+#
+# Lives here, synced by the self-managed "argocd" Application, rather than in
+# appliance/application/: nothing watches that directory, so a new object
+# there would only reach appliances when the installer is re-run.
+apiVersion: argoproj.io/v1alpha1
+kind: ApplicationSet
+metadata:
+  name: adapters
+spec:
+  goTemplate: true
+  goTemplateOptions: ["missingkey=error"]
+  generators:
+    - plugin:
+        configMapRef:
+          name: adapter-attendant-plugin
+        # In-cluster and cheap. This is how long a sync in the UI waits
+        # before the adapter starts deploying.
+        requeueAfterSeconds: 60
+  template:
+    metadata:
+      name: "adapter-{{.id}}"
+      annotations:
+        adapter-attendant.humi.kaese.space/adapter-id: "{{.id}}"
+    spec:
+      project: default
+      source:
+        repoURL: https://github.com/Kaese72/huemie-gitops-base.git
+        targetRevision: master
+        path: appliance/base/adapter-instance
+        kustomize:
+          nameSuffix: "-{{.id}}"
+          # Also lands in the Deployment's selector and the Service's.
+          commonLabels:
+            huemie-adapter: "adapter-{{.id}}"
+          # Also lands on the pod template, which is what rolls the adapter
+          # on every sync.
+          commonAnnotations:
+            adapter-attendant.humi.kaese.space/sync-generation: "{{.syncGeneration}}"
+          patches:
+            - target:
+                kind: Deployment
+                name: adapter
+              patch: |-
+                - op: test
+                  path: /spec/template/spec/containers/0/name
+                  value: adapter
+                - op: replace
+                  path: /spec/template/spec/containers/0/name
+                  value: "adapter-{{.id}}"
+                - op: replace
+                  path: /spec/template/spec/containers/0/image
+                  value: "{{.image}}"
+            # Values are already base64 (data, not stringData: keys dropped
+            # from stringData are never removed from the live Secret), and
+            # toJson renders them as a JSON object, which is valid YAML
+            # whatever characters they hold.
+            - target:
+                kind: Secret
+                name: adapter
+              patch: |-
+                - op: add
+                  path: /data
+                  value: {{ .secretData | toJson }}
+      destination:
+        server: https://kubernetes.default.svc
+        namespace: adapters
+      syncPolicy:
+        automated:
+          prune: true
+          selfHeal: true
+---
+# Registers adapter-attendant as a Plugin generator - see
+# https://argo-cd.readthedocs.io/en/stable/operator-manual/applicationset/Generators-Plugin/.
+# ArgoCD appends /api/v1/getparams.execute to baseUrl. `token` references
+# the adapter-attendant-plugin Secret in this namespace (which
+# adapter-attendant-plugin-token-bootstrap writes, labeled
+# app.kubernetes.io/part-of=argocd so ArgoCD will read it), not argocd-secret,
+# which ArgoCD itself owns.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: adapter-attendant-plugin
+data:
+  token: "$adapter-attendant-plugin:token"
+  baseUrl: "http://adapter-attendant-internal.huemie-local.svc.cluster.local:8081/adapter-attendant-internal/v1/argocd-plugin"
+  requestTimeout: "30"

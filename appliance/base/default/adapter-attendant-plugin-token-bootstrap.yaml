@@ -1,0 +1,135 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: adapter-attendant-plugin-token-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+# Its access to the argocd namespace is in
+# base/adapters/adapter-attendant-plugin-token-bootstrap.yaml,
+# since this kustomization's namespace: field would move that Role into
+# huemie-local.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: adapter-attendant-plugin-token-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["adapter-attendant-secret"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: adapter-attendant-plugin-token-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: adapter-attendant-plugin-token-bootstrap
+roleRef:
+  kind: Role
+  name: adapter-attendant-plugin-token-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: adapter-attendant-plugin-token-bootstrap
+  labels:
+    app: adapter-attendant-plugin-token-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: adapter-attendant-plugin-token-bootstrap
+        huemie.space/service-role: adapter-attendant-plugin-token-bootstrap
+    spec:
+      serviceAccountName: adapter-attendant-plugin-token-bootstrap
+      containers:
+        - name: create-secret
+          image: alpine/k8s:1.37.1
+          imagePullPolicy: IfNotPresent
+          # The plugin token ArgoCD's adapters ApplicationSet presents to
+          # adapter-attendant has to be in two places: adapter-attendant-secret
+          # (here, what the service checks against - the same Secret
+          # mariadb-db-users-bootstrap keeps database.password in, each
+          # writing only its own key) and adapter-attendant-plugin in argocd
+          # (what the plugin ConfigMap references). Idempotent per key: an
+          # existing token is kept, the huemie-local copy winning if the two
+          # disagree, and only a missing copy is written.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+              LOCAL_SECRET=adapter-attendant-secret
+              LOCAL_KEY=auth.plugin-tokens
+              ARGOCD_NAMESPACE=argocd
+              ARGOCD_SECRET=adapter-attendant-plugin
+              ARGOCD_KEY=token
+
+              # go-template rather than jsonpath: jsonpath's {.data['a.b']}
+              # silently returns empty for keys containing dots, which would
+              # mint a new token on every sync. Only a missing secret/key
+              # counts as "not provisioned yet" -- any other error fails the
+              # Job instead of rotating.
+              read_key() {
+                if ENC=$(kubectl get secret "$2" -n "$1" -o go-template="{{with .data}}{{with index . \"$3\"}}{{.}}{{end}}{{end}}" 2>/tmp/kubectl-err); then
+                  printf '%s' "$ENC" | base64 -d
+                elif ! grep -q NotFound /tmp/kubectl-err; then
+                  cat /tmp/kubectl-err >&2
+                  return 1
+                fi
+              }
+
+              write_key() {
+                if kubectl get secret "$2" -n "$1" >/dev/null 2>&1; then
+                  ENC=$(printf '%s' "$4" | base64 | tr -d '\n')
+                  kubectl patch secret "$2" -n "$1" --type=merge -p "{\"data\":{\"$3\":\"$ENC\"}}"
+                else
+                  kubectl create secret generic "$2" -n "$1" --from-literal="$3=$4"
+                fi
+              }
+
+              LOCAL=$(read_key "$NAMESPACE" "$LOCAL_SECRET" "$LOCAL_KEY")
+              ARGOCD=$(read_key "$ARGOCD_NAMESPACE" "$ARGOCD_SECRET" "$ARGOCD_KEY")
+
+              TOKEN="$LOCAL"
+              if [ -z "$TOKEN" ]; then TOKEN="$ARGOCD"; fi
+              if [ -z "$TOKEN" ]; then
+                # Hex, so it can never contain the comma that separates
+                # tokens in auth.plugin-tokens.
+                TOKEN=$(head -c 32 /dev/urandom | od -An -tx1 | tr -d ' \n')
+              fi
+
+              if [ "$LOCAL" != "$TOKEN" ]; then
+                write_key "$NAMESPACE" "$LOCAL_SECRET" "$LOCAL_KEY" "$TOKEN"
+              fi
+              if [ "$ARGOCD" != "$TOKEN" ]; then
+                write_key "$ARGOCD_NAMESPACE" "$ARGOCD_SECRET" "$ARGOCD_KEY" "$TOKEN"
+              fi
+              # Without this label ArgoCD won't resolve
+              # "$adapter-attendant-plugin:token".
+              kubectl label secret "$ARGOCD_SECRET" -n "$ARGOCD_NAMESPACE" app.kubernetes.io/part-of=argocd --overwrite
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+      restartPolicy: Never

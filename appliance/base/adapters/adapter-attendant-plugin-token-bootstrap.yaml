@@ -1,0 +1,41 @@
+---
+# adapter-attendant-plugin-token-bootstrap (base/default) writes the plugin
+# token ArgoCD presents to adapter-attendant into its own Secret in argocd,
+# labeled app.kubernetes.io/part-of=argocd so the plugin ConfigMap can
+# reference it as "$adapter-attendant-plugin:token". A Secret of its own
+# rather than a key merged into argocd-secret, which ArgoCD itself owns -
+# same reasoning as cloud/application-crds.
+#
+# adapter-attendant itself has no Kubernetes API access at all: ArgoCD
+# deploys every adapter, Secret included, from its plugin answer.
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: adapter-attendant-plugin-token-bootstrap
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["adapter-attendant-plugin"]
+    verbs: ["get", "patch"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: adapter-attendant-plugin-token-bootstrap
+  namespace: argocd
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: adapter-attendant-plugin-token-bootstrap
+    namespace: huemie-local
+roleRef:
+  kind: Role
+  name: adapter-attendant-plugin-token-bootstrap
+  apiGroup: rbac.authorization.k8s.io

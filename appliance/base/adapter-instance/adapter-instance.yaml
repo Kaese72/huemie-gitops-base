@@ -1,0 +1,60 @@
+# One adapter, as adapter-attendant used to apply it directly. Names, labels
+# and the container name are kept identical to what it applied (adapter-<id>
+# everywhere, after the ApplicationSet's nameSuffix and patches), so that
+# ArgoCD takes over an existing adapter's Deployment and Service in place:
+# a Deployment's selector can't change, and a container under a new name
+# would be added next to the old one rather than replace it.
+#
+# The adapter's whole environment comes from the Secret adapter-<id>, whose
+# data the ApplicationSet fills in from adapter-attendant's plugin answer -
+# credentials included. They end up on the generated Application in plain
+# text, which is acceptable as long as nobody but cluster admins can read
+# Applications (the appliance doesn't expose ArgoCD at all).
+apiVersion: v1
+kind: Secret
+metadata:
+  name: adapter
+type: Opaque
+---
+apiVersion: apps/v1
+kind: Deployment
+metadata:
+  name: adapter
+  labels:
+    huemie-purpose: device-adapter
+    huemie.space/service-role: adapter
+spec:
+  replicas: 1
+  selector:
+    matchLabels:
+      huemie-purpose: device-adapter
+      huemie.space/service-role: adapter
+  template:
+    metadata:
+      labels:
+        huemie-purpose: device-adapter
+        huemie.space/service-role: adapter
+    spec:
+      containers:
+        # name and image are set by the ApplicationSet. The secretRef is
+        # renamed along with the Secret by its nameSuffix.
+        - name: adapter
+          image: adapter-image
+          envFrom:
+            - secretRef:
+                name: adapter
+          ports:
+            - containerPort: 8080
+---
+apiVersion: v1
+kind: Service
+metadata:
+  name: adapter
+spec:
+  selector:
+    huemie-purpose: device-adapter
+    huemie.space/service-role: adapter
+  ports:
+    - port: 8080
+      targetPort: 8080
+      protocol: TCP

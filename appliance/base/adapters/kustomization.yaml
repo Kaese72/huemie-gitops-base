@@ -1,17 +1,15 @@
 apiVersion: kustomize.config.k8s.io/v1beta1
 kind: Kustomization
-namespace: adapters
 
+# The adapters namespace, and the access adapter-attendant's plugin-token
+# bootstrap needs outside huemie-local. The adapters themselves
+# are deployed into this namespace by the adapters ApplicationSet
+# (appliance/argocd/applicationset-adapters.yaml), from
+# ../adapter-instance.
+#
+# No namespace: field on purpose -- these objects live in both adapters and
+# argocd (and RoleBinding subjects name huemie-local), so each sets its own.
 resources:
   - namespace.yaml
-  - adapter-attendant.yaml
+  - adapter-attendant-plugin-token-bootstrap.yaml
   - network-policies.yaml
-
-patches:
-  - target:
-      kind: RoleBinding
-      name: adapter-attendant-adapter-admin-binding
-    patch: |-
-      - op: add
-        path: /subjects/0/namespace
-        value: huemie-local

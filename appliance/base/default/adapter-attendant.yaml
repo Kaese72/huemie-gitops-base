@@ -1,11 +1,4 @@
 ---
-apiVersion: v1
-kind: ServiceAccount
-metadata:
-  name: adapter-attendant
-  annotations:
-    argocd.argoproj.io/sync-wave: "10"
----
 apiVersion: apps/v1
 kind: Deployment
 metadata:
@@ -38,19 +31,9 @@ spec:
               cpu: 100m
               memory: 256M
           env:
-            # NetworkPolicy can't reliably restrict egress straight to the apiserver's
-            # ClusterIP (kube-proxy's DNAT to the real backend happens before NetworkPolicy
-            # is enforced), so route the Kubernetes client's traffic through
-            # kube-apiserver-proxy - a real pod, reachable with a reliably-enforceable
-            # podSelector egress rule below. KUBERNETES_SERVICE_HOST/PORT are left at their
-            # normal auto-injected values since this is a transparent HTTP CONNECT proxy:
-            # the client still dials and TLS-verifies the real apiserver address, it just
-            # tunnels through the proxy pod to get there. Deliberately NOT the generic
-            # HTTPS_PROXY env var: a blanket HTTPS_PROXY would silently route any other
-            # outbound HTTPS call this process makes through this apiserver-only proxy
-            # too, which refuses to CONNECT anywhere else - see database.NewPureK8sBackend.
-            - name: KUBERNETES_APISERVER_PROXY_URL
-              value: http://kube-apiserver-proxy:6443
+            # Only used to tell device-store an adapter's in-cluster address:
+            # adapter-attendant never talks to the Kubernetes API. ArgoCD
+            # deploys the adapters from its plugin answer.
             - name: KUBERNETES_ADAPTER_NAMESPACE
               valueFrom:
                 configMapKeyRef:
@@ -83,6 +66,13 @@ spec:
                   key: database.password
             - name: AUTH_RSA_PUBLIC_KEY_PATH
               value: /etc/auth-pubkey/public.pem
+            # Written by adapter-attendant-plugin-token-bootstrap, together
+            # with the copy in argocd the adapters ApplicationSet presents.
+            - name: AUTH_PLUGIN_TOKENS
+              valueFrom:
+                secretKeyRef:
+                  name: adapter-attendant-secret
+                  key: auth.plugin-tokens
           volumeMounts:
             - name: auth-pubkey
               mountPath: /etc/auth-pubkey
@@ -94,7 +84,8 @@ spec:
             items:
               - key: public.pem
                 path: public.pem
-      serviceAccountName: adapter-attendant
+      # No Kubernetes API access at all, so no token either.
+      automountServiceAccountToken: false
 ---
 apiVersion: batch/v1
 kind: Job
@@ -209,6 +200,16 @@ spec:
               huemie.space/service-role: device-store
       ports:
         - port: 8081
+    # The adapters ApplicationSet's Plugin generator.
+    - from:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: argocd
+          podSelector:
+            matchLabels:
+              app.kubernetes.io/name: argocd-applicationset-controller
+      ports:
+        - port: 8081
   egress:
     - to:
         - namespaceSelector:
@@ -228,9 +229,3 @@ spec:
               huemie.space/service-role: mariadb
       ports:
         - port: 3306
-    - to:
-        - podSelector:
-            matchLabels:
-              huemie.space/service-role: kube-apiserver-proxy
-      ports:
-        - port: 8080
