@@ -1,3 +1,9 @@
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: adapter-attendant
+  annotations:
+    argocd.argoproj.io/sync-wave: "50"
 ---
 apiVersion: apps/v1
 kind: Deployment
@@ -17,6 +23,7 @@ spec:
         huemie-owner: core
         huemie.space/service-role: adapter-attendant
     spec:
+      serviceAccountName: adapter-attendant
       containers:
         - name: adapter-attendant
           image: ghcr.io/kaese72/adapter-attendant:v0.0.23
@@ -66,6 +73,17 @@ spec:
                   key: database.password
             - name: AUTH_RSA_PUBLIC_KEY_PATH
               value: /etc/auth-pubkey/public.pem
+            # Besides use tokens, API tokens are looked up on authentication's internal
+            # listener, authenticated as this pod's own ServiceAccount
+            # (allow-listed in authentication's main.go). Unset, only use
+            # tokens are accepted.
+            - name: "AUTH_INTERNAL_URL"
+              valueFrom:
+                configMapKeyRef:
+                  name: adapter-attendant-configmap
+                  key: authentication.internal-url
+            - name: "AUTH_SERVICE_ACCOUNT_TOKEN_PATH"
+              value: /var/run/secrets/tokens/authentication-internal
             # Written by adapter-attendant-plugin-token-bootstrap, together
             # with the copy in argocd the adapters ApplicationSet presents.
             - name: AUTH_PLUGIN_TOKENS
@@ -77,6 +95,9 @@ spec:
             - name: auth-pubkey
               mountPath: /etc/auth-pubkey
               readOnly: true
+            - name: authentication-internal-token
+              mountPath: /var/run/secrets/tokens
+              readOnly: true
       volumes:
         - name: auth-pubkey
           secret:
@@ -84,6 +105,17 @@ spec:
             items:
               - key: public.pem
                 path: public.pem
+        # Audience-bound token proving this pod's identity to
+        # authentication's internal listener when introspecting an API
+        # token. kubelet rotates it in place; usertoken.Introspector re-reads
+        # it on every call.
+        - name: authentication-internal-token
+          projected:
+            sources:
+              - serviceAccountToken:
+                  path: authentication-internal
+                  audience: humi-authentication-internal
+                  expirationSeconds: 3600
       # No Kubernetes API access at all, so no token either.
       automountServiceAccountToken: false
 ---
@@ -223,6 +255,13 @@ spec:
           protocol: UDP
         - port: 53
           protocol: TCP
+    # API token introspection (authentication's internal listener).
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: authentication
+      ports:
+        - port: 8081
     - to:
         - podSelector:
             matchLabels:

@@ -26,7 +26,7 @@ spec:
       serviceAccountName: authentication
       containers:
         - name: authentication
-          image: ghcr.io/kaese72/authentication:v0.0.8
+          image: ghcr.io/kaese72/authentication:v0.0.9
           env:
             # NetworkPolicy can't reliably restrict egress straight to the
             # apiserver's ClusterIP (kube-proxy's DNAT to the real backend
@@ -82,9 +82,11 @@ spec:
               value: /var/run/secrets/tokens/cloud-connect-client-internal
             # Internal listener (port 8081): only the chatbot's own
             # Kubernetes ServiceAccount, verified via TokenReview
-            # (huemie-lib/k8sauth), may mint an impersonation token here --
-            # that allow-list is hardcoded in authentication's main.go, not
-            # configuration, since it's a security boundary of the service.
+            # (huemie-lib/k8sauth), may mint an impersonation token here;
+            # device-store, ittt-orchestrator and adapter-attendant may only
+            # introspect API tokens. Both allow-lists are hardcoded in
+            # authentication's main.go, not configuration, since they're a
+            # security boundary of the service.
             - name: "INTERNAL_LISTEN_ADDR"
               value: ":8081"
             - name: "INTERNAL_TOKEN_AUDIENCE"
@@ -178,7 +180,7 @@ spec:
     spec:
       containers:
       - name: authentication-migrater
-        image: ghcr.io/kaese72/authentication-migrater:v0.0.8
+        image: ghcr.io/kaese72/authentication-migrater:v0.0.9
         imagePullPolicy: IfNotPresent
         args: ["-url=jdbc:mariadb://$(DATABASE_HOST):3306/authentication?user=$(DATABASE_USER)&password=$(DATABASE_PASSWORD)", "migrate"]
         env:
@@ -265,6 +267,27 @@ spec:
         # in authentication's main.go, but that's an application-layer
         # check, not a network one -- this still scopes who can reach the
         # port at all.
+        - port: 8081
+    # API token introspection only: these services are allow-listed for
+    # .../internal/api-tokens/introspect, not for impersonation (both
+    # allow-lists live in authentication's main.go).
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: device-store
+      ports:
+        - port: 8081
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: ittt-orchestrator
+      ports:
+        - port: 8081
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: adapter-attendant
+      ports:
         - port: 8081
   egress:
     - to:
