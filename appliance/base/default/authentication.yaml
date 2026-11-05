@@ -83,8 +83,8 @@ spec:
             # Internal listener (port 8081): only the chatbot's own
             # Kubernetes ServiceAccount, verified via TokenReview
             # (huemie-lib/k8sauth), may mint an impersonation token here;
-            # device-store, ittt-orchestrator and adapter-attendant may only
-            # introspect API tokens. Both allow-lists are hardcoded in
+            # device-store, ittt-orchestrator, adapter-attendant and chatbot
+            # (for its MCP endpoint) may introspect API tokens. Both allow-lists are hardcoded in
             # authentication's main.go, not configuration, since they're a
             # security boundary of the service.
             - name: "INTERNAL_LISTEN_ADDR"
