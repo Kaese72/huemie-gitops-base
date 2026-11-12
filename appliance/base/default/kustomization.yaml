@@ -48,6 +48,14 @@ configMapGenerator:
     - device-store.url=http://device-store.huemie-local:8080
     - anthropic.model=claude-haiku-4-5-20251001
     - authentication.internal-url=http://authentication.huemie-local:8081
+# Read by ingress-tls-bootstrap: the SANs (openssl subjectAltName syntax) the
+# ingress server cert is issued for. The cert is Traefik's default (TLSStore
+# in ./ingress.yaml), so it's served whatever name or IP the appliance is
+# reached by; this only matters once clients trust the CA. Changing it
+# reissues the cert on the next sync (same CA).
+- name: ingress-tls-configmap
+  literals:
+    - subject-alt-names=DNS:humi.appliance.localhost
 
 # No secretGenerator: every service's <service>-secret (database.password,
 # event.connectionstring, auth.refresh-secret, auth.plugin-tokens) is created
@@ -78,3 +86,4 @@ resources:
   - rabbitmq-users-bootstrap.yaml
   - ui.yaml
   - ingress.yaml
+  - ingress-tls-bootstrap.yaml

@@ -1,0 +1,279 @@
+# Provisions the TLS certificate huemie-ingress (./ingress.yaml) serves,
+# instead of Traefik's built-in default cert, which Traefik regenerates on
+# every restart and so forces every browser to re-accept it.
+#
+# Two Secrets:
+#   huemie-ingress-ca   ca.crt + ca.key -- a private CA, generated once and
+#                       never rotated. Kept so the server cert can be
+#                       reissued without changing what clients would trust,
+#                       and so ca.crt can later be installed on devices.
+#   huemie-ingress-tls  kubernetes.io/tls (tls.crt, tls.key, plus ca.crt),
+#                       signed by that CA. Reissued only when it is missing,
+#                       no longer verifies against the CA, expires within 30
+#                       days, or ingress-tls-configmap's subject-alt-names
+#                       differs from what it was issued for (recorded in the
+#                       huemie.space/subject-alt-names annotation).
+#
+# Delete huemie-ingress-tls to force a reissue; delete both to start over
+# with a new CA. Neither Secret is managed by ArgoCD, so a sync never prunes
+# them.
+apiVersion: v1
+kind: ServiceAccount
+metadata:
+  name: ingress-tls-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: Role
+metadata:
+  name: ingress-tls-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+rules:
+  - apiGroups: [""]
+    resources: ["secrets"]
+    verbs: ["create"]
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["huemie-ingress-ca", "huemie-ingress-tls"]
+    verbs: ["get"]
+  # Reissuing replaces the server cert in place; the CA is never updated.
+  - apiGroups: [""]
+    resources: ["secrets"]
+    resourceNames: ["huemie-ingress-tls"]
+    verbs: ["update"]
+---
+apiVersion: rbac.authorization.k8s.io/v1
+kind: RoleBinding
+metadata:
+  name: ingress-tls-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "10"
+subjects:
+  - kind: ServiceAccount
+    name: ingress-tls-bootstrap
+roleRef:
+  kind: Role
+  name: ingress-tls-bootstrap
+  apiGroup: rbac.authorization.k8s.io
+---
+apiVersion: batch/v1
+kind: Job
+metadata:
+  name: ingress-tls-bootstrap
+  labels:
+    app: ingress-tls-bootstrap
+  annotations:
+    argocd.argoproj.io/sync-wave: "20"
+    argocd.argoproj.io/hook: Sync
+    argocd.argoproj.io/hook-delete-policy: BeforeHookCreation
+spec:
+  backoffLimit: 1
+  template:
+    metadata:
+      labels:
+        app: ingress-tls-bootstrap
+        huemie.space/service-role: ingress-tls-bootstrap
+        huemie.space/purpose: bootstrap
+    spec:
+      serviceAccountName: ingress-tls-bootstrap
+      initContainers:
+        - name: read-existing
+          image: alpine/k8s:1.37.2
+          imagePullPolicy: IfNotPresent
+          # The Kubernetes API only through kube-apiserver-proxy -- see
+          # ./network-policies.yaml.
+          env:
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
+          # Copies whatever is already provisioned into /work/existing for
+          # generate-certs to reuse. Only NotFound counts as "not provisioned
+          # yet" -- any other error fails the Job rather than letting it mint
+          # a new CA over a working one.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+              mkdir -p /work/existing
+
+              # read_key SECRET KEY FILE: writes the decoded key to FILE, or
+              # nothing if the secret/key is absent. go-template rather than
+              # jsonpath: jsonpath's {.data['a.b']} silently returns empty for
+              # keys containing dots.
+              read_key() {
+                if ENC=$(kubectl get secret "$1" -n "$NAMESPACE" -o go-template="{{with .data}}{{with index . \"$2\"}}{{.}}{{end}}{{end}}" 2>/tmp/kubectl-err); then
+                  if [ -n "$ENC" ]; then
+                    printf '%s' "$ENC" | base64 -d > "$3"
+                  fi
+                elif ! grep -q NotFound /tmp/kubectl-err; then
+                  cat /tmp/kubectl-err >&2
+                  exit 1
+                fi
+              }
+
+              read_key huemie-ingress-ca ca.crt /work/existing/ca.crt
+              read_key huemie-ingress-ca ca.key /work/existing/ca.key
+              read_key huemie-ingress-tls tls.crt /work/existing/tls.crt
+              read_key huemie-ingress-tls tls.key /work/existing/tls.key
+
+              if SANS=$(kubectl get secret huemie-ingress-tls -n "$NAMESPACE" -o go-template='{{with .metadata.annotations}}{{with index . "huemie.space/subject-alt-names"}}{{.}}{{end}}{{end}}' 2>/tmp/kubectl-err); then
+                printf '%s' "$SANS" > /work/existing/subject-alt-names
+              elif ! grep -q NotFound /tmp/kubectl-err; then
+                cat /tmp/kubectl-err >&2
+                exit 1
+              fi
+          volumeMounts:
+            - name: work
+              mountPath: /work
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+        - name: generate-certs
+          image: alpine/openssl:3.5.9
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: SUBJECT_ALT_NAMES
+              valueFrom:
+                configMapKeyRef:
+                  name: ingress-tls-configmap
+                  key: subject-alt-names
+          # Writes to /work/out only what needs (re)creating; a marker file
+          # (ca.new / tls.new) tells write-secrets which Secret to persist.
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              E=/work/existing
+              O=/work/out
+              mkdir -p "$O"
+
+              if [ -s "$E/ca.crt" ] && [ -s "$E/ca.key" ]; then
+                cp "$E/ca.crt" "$E/ca.key" "$O/"
+              else
+                echo "no CA yet, generating one"
+                cat > /tmp/ca.cnf <<'EOF'
+              [req]
+              distinguished_name = dn
+              prompt = no
+              x509_extensions = v3_ca
+              [dn]
+              CN = Humi Appliance Ingress CA
+              [v3_ca]
+              basicConstraints = critical, CA:TRUE, pathlen:0
+              keyUsage = critical, keyCertSign, cRLSign
+              subjectKeyIdentifier = hash
+              EOF
+                openssl req -x509 -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+                  -config /tmp/ca.cnf -keyout "$O/ca.key" -out "$O/ca.crt" -days 3650
+                touch "$O/ca.new"
+              fi
+
+              REASON=""
+              if [ ! -s "$E/tls.crt" ] || [ ! -s "$E/tls.key" ]; then
+                REASON="no server cert yet"
+              elif ! openssl verify -CAfile "$O/ca.crt" "$E/tls.crt" >/dev/null 2>&1; then
+                REASON="server cert not signed by the current CA"
+              elif ! openssl x509 -in "$E/tls.crt" -noout -checkend 2592000 >/dev/null; then
+                REASON="server cert expires within 30 days"
+              elif [ "$(cat "$E/subject-alt-names" 2>/dev/null || true)" != "$SUBJECT_ALT_NAMES" ]; then
+                REASON="subject-alt-names changed"
+              fi
+
+              if [ -z "$REASON" ]; then
+                echo "server cert still valid, skipping"
+                exit 0
+              fi
+
+              echo "issuing server cert: $REASON"
+              # CN is cosmetic (browsers only look at the SANs): first DNS
+              # name, if any.
+              CN=$(printf '%s' "$SUBJECT_ALT_NAMES" | tr ',' '\n' | sed -n 's/^ *DNS://p' | head -n1)
+              [ -n "$CN" ] || CN="Humi Appliance"
+              cat > /tmp/leaf.ext <<EOF
+              basicConstraints = critical, CA:FALSE
+              keyUsage = critical, digitalSignature
+              extendedKeyUsage = serverAuth
+              subjectAltName = $SUBJECT_ALT_NAMES
+              subjectKeyIdentifier = hash
+              authorityKeyIdentifier = keyid, issuer
+              EOF
+              openssl req -new -newkey ec -pkeyopt ec_paramgen_curve:P-256 -nodes \
+                -subj "/CN=$CN" -keyout "$O/tls.key" -out /tmp/tls.csr
+              # 825 days: the longest validity Apple platforms accept for a
+              # TLS server cert, even one from a user-trusted private CA.
+              openssl x509 -req -in /tmp/tls.csr -CA "$O/ca.crt" -CAkey "$O/ca.key" \
+                -CAcreateserial -CAserial /tmp/ca.srl -days 825 \
+                -extfile /tmp/leaf.ext -out "$O/tls.crt"
+              printf '%s' "$SUBJECT_ALT_NAMES" > "$O/subject-alt-names"
+              touch "$O/tls.new"
+          volumeMounts:
+            - name: work
+              mountPath: /work
+          resources:
+            limits:
+              cpu: 250m
+              memory: 32M
+            requests:
+              cpu: 50m
+              memory: 16M
+      containers:
+        - name: write-secrets
+          image: alpine/k8s:1.37.2
+          imagePullPolicy: IfNotPresent
+          env:
+            - name: HTTPS_PROXY
+              value: http://kube-apiserver-proxy:6443
+          command:
+            - /bin/sh
+            - -c
+            - |
+              set -eu
+
+              NAMESPACE=$(cat /var/run/secrets/kubernetes.io/serviceaccount/namespace)
+              O=/work/out
+
+              if [ -e "$O/ca.new" ]; then
+                kubectl create secret generic huemie-ingress-ca -n "$NAMESPACE" \
+                  --from-file=ca.crt="$O/ca.crt" --from-file=ca.key="$O/ca.key"
+              fi
+
+              if [ -e "$O/tls.new" ]; then
+                kubectl create secret generic huemie-ingress-tls -n "$NAMESPACE" \
+                  --type=kubernetes.io/tls \
+                  --from-file=tls.crt="$O/tls.crt" --from-file=tls.key="$O/tls.key" \
+                  --from-file=ca.crt="$O/ca.crt" \
+                  --dry-run=client -o yaml \
+                | kubectl annotate --local -f - -o yaml \
+                    "huemie.space/subject-alt-names=$(cat "$O/subject-alt-names")" \
+                > /tmp/tls-secret.yaml
+                if kubectl get secret huemie-ingress-tls -n "$NAMESPACE" >/dev/null 2>&1; then
+                  kubectl replace -f /tmp/tls-secret.yaml
+                else
+                  kubectl create -f /tmp/tls-secret.yaml
+                fi
+              fi
+          volumeMounts:
+            - name: work
+              mountPath: /work
+              readOnly: true
+          resources:
+            limits:
+              cpu: 100m
+              memory: 32M
+            requests:
+              cpu: 20m
+              memory: 16M
+      volumes:
+        - name: work
+          emptyDir: {}
+      restartPolicy: Never

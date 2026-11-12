@@ -8,6 +8,12 @@ metadata:
     # Redirect plain HTTP to HTTPS.
     traefik.ingress.kubernetes.io/router.middlewares: huemie-local-redirect-https@kubernetescrd
 spec:
+  # Provisioned by ./ingress-tls-bootstrap.yaml. Traefik picks certs by SNI,
+  # not by which Ingress lists them, so listing it here alone would leave
+  # unmatched names and the bare IP (no SNI) on Traefik's regenerating
+  # built-in cert -- the TLSStore at the bottom makes it the default too.
+  tls:
+    - secretName: huemie-ingress-tls
   rules:
     # No host: matches requests for any hostname (LAN names, the appliance's
     # IP, ...). Overlays may set one. huemie-tunnel-ingress below still wins
@@ -153,3 +159,16 @@ spec:
   redirectScheme:
     scheme: https
     permanent: true
+---
+# Traefik's default certificate, for every TLS connection no other cert
+# matches by SNI -- including any by IP. Traefik honours only one TLSStore,
+# and only if it's named "default"; the Secret must live in its namespace.
+apiVersion: traefik.io/v1alpha1
+kind: TLSStore
+metadata:
+  name: default
+  annotations:
+    argocd.argoproj.io/sync-wave: "70"
+spec:
+  defaultCertificate:
+    secretName: huemie-ingress-tls
