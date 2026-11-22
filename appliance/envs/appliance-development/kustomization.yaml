@@ -28,10 +28,10 @@ images:
     newTag: v0.0.24-20261122141720-cf608ba
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
-    newTag: v0.0.6-20261122141837-69cdbe0
+    newTag: v0.0.7-20261122160317-918129d
   - name: ghcr.io/kaese72/ittt-orchestrator-migrater
     newName: ghcr.io/kaese72/ittt-orchestrator-migrater-development
-    newTag: v0.0.6-20261122141845-69cdbe0
+    newTag: v0.0.7-20261122160321-918129d
   - name: ghcr.io/kaese72/chatbot
     newName: ghcr.io/kaese72/chatbot-development
     newTag: v0.0.4-20261122141802-30ad84c
