@@ -22,10 +22,10 @@ images:
     newTag: v0.0.10-20261105212206-9e580de
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
-    newTag: v0.0.24-20261105212149-60608af
+    newTag: v0.0.24-20261122141725-cf608ba
   - name: ghcr.io/kaese72/adapter-attendant-migrater
     newName: ghcr.io/kaese72/adapter-attendant-migrater-development
-    newTag: v0.0.24-20261105212151-60608af
+    newTag: v0.0.24-20261122141720-cf608ba
   - name: ghcr.io/kaese72/ittt-orchestrator
     newName: ghcr.io/kaese72/ittt-orchestrator-development
     newTag: v0.0.6-20261105212053-6e924f9
@@ -37,7 +37,7 @@ images:
     newTag: v0.0.4-20261105214842-ae33e35
   - name: ghcr.io/kaese72/chatbot-migrater
     newName: ghcr.io/kaese72/chatbot-migrater-development
-    newTag: v0.0.4-20261105214840-ae33e35
+    newTag: v0.0.4-20261122141801-30ad84c
   - name: ghcr.io/kaese72/cloud-connect-client
     newName: ghcr.io/kaese72/cloud-connect-client-development
     newTag: v0.0.7-20261010160009-51ed374
