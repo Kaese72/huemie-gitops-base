@@ -19,7 +19,7 @@ images:
     newTag: v0.0.67-20261105211801-e93143d
   - name: ghcr.io/kaese72/huemie-ui
     newName: ghcr.io/kaese72/huemie-ui-development
-    newTag: v0.0.10-20261105212206-9e580de
+    newTag: v0.0.11-20261122141956-afa66ba
   - name: ghcr.io/kaese72/adapter-attendant
     newName: ghcr.io/kaese72/adapter-attendant-development
     newTag: v0.0.24-20261122141725-cf608ba
@@ -40,7 +40,7 @@ images:
     newTag: v0.0.4-20261122141801-30ad84c
   - name: ghcr.io/kaese72/cloud-connect-client
     newName: ghcr.io/kaese72/cloud-connect-client-development
-    newTag: v0.0.7-20261010160009-51ed374
+    newTag: v0.0.8-20261122141917-0f37465
   - name: ghcr.io/kaese72/cloud-connect-client-migrater
     newName: ghcr.io/kaese72/cloud-connect-client-migrater-development
-    newTag: v0.0.7-20261010160010-51ed374
+    newTag: v0.0.8-20261122141916-0f37465
