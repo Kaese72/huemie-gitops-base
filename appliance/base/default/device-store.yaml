@@ -27,6 +27,12 @@ spec:
       containers:
         - name: device-store
           image: ghcr.io/kaese72/device-store:v0.0.68
+          # Optional OpenTelemetry config (OTEL_* env vars). Only exists once
+          # appliance/optional/otel-collection is installed; read at pod start.
+          envFrom:
+            - configMapRef:
+                name: telemetry-env
+                optional: true
           env:
             - name: "DATABASE_HOST"
               valueFrom:

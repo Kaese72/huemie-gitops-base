@@ -1,0 +1,31 @@
+# Example only: nothing applies this file (the installer only applies
+# appliance/application/). Apply it by hand on an appliance that should send
+# telemetry, after creating the otlp-token Secret -- see README.md.
+apiVersion: argoproj.io/v1alpha1
+kind: Application
+metadata:
+  name: otel-collection
+  namespace: argocd
+spec:
+  project: default
+  sources:
+    - repoURL: https://open-telemetry.github.io/opentelemetry-helm-charts
+      chart: opentelemetry-collector
+      # Same chart version as hallen-gitops-base/otel-collection.
+      targetRevision: 0.181.0
+      helm:
+        releaseName: otel-agent
+        valueFiles:
+          - $humi/appliance/optional/otel-collection/values.yaml
+    # This repo: the values file above (ref) plus the plain manifests (path).
+    - repoURL: https://github.com/Kaese72/huemie-gitops-base.git
+      targetRevision: master
+      ref: humi
+      path: appliance/optional/otel-collection/manifests
+  destination:
+    server: https://kubernetes.default.svc
+    namespace: otel-collection
+  syncPolicy:
+    automated:
+      prune: true
+      selfHeal: true

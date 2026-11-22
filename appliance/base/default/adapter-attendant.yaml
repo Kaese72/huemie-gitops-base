@@ -37,6 +37,12 @@ spec:
             requests:
               cpu: 100m
               memory: 256M
+          # Optional OpenTelemetry config (OTEL_* env vars). Only exists once
+          # appliance/optional/otel-collection is installed; read at pod start.
+          envFrom:
+            - configMapRef:
+                name: telemetry-env
+                optional: true
           env:
             # Only used to tell device-store an adapter's in-cluster address:
             # adapter-attendant never talks to the Kubernetes API. ArgoCD

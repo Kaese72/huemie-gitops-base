@@ -1,0 +1,26 @@
+# Turns tracing on in the Humi services. Every Deployment in
+# appliance/base/default reads this with
+#
+#   envFrom: [{configMapRef: {name: telemetry-env, optional: true}}]
+#
+# so without it they run untraced, and with it huemie-lib's telemetry
+# package (configured only by these standard OTEL_* variables) exports to
+# the local otel-agent. Env vars are read at pod start: after creating,
+# changing or deleting this, restart the services:
+#
+#   kubectl -n huemie-local rollout restart deployment
+#
+# Lives in huemie-local but is owned by the otel-collection Application, not
+# humi, so humi's prune leaves it alone. Delete it from this kustomization's
+# resources to manage it by hand instead.
+apiVersion: v1
+kind: ConfigMap
+metadata:
+  name: telemetry-env
+  namespace: huemie-local
+data:
+  OTEL_EXPORTER_OTLP_ENDPOINT: http://otel-agent.otel-collection.svc.cluster.local:4318
+  OTEL_EXPORTER_OTLP_PROTOCOL: http/protobuf
+  # Every trace for now. Switch to e.g. parentbased_traceidratio with
+  # OTEL_TRACES_SAMPLER_ARG=0.1 if volume becomes a problem.
+  OTEL_TRACES_SAMPLER: parentbased_always_on

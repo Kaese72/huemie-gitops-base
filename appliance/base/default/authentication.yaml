@@ -27,6 +27,12 @@ spec:
       containers:
         - name: authentication
           image: ghcr.io/kaese72/authentication:v0.0.10
+          # Optional OpenTelemetry config (OTEL_* env vars). Only exists once
+          # appliance/optional/otel-collection is installed; read at pod start.
+          envFrom:
+            - configMapRef:
+                name: telemetry-env
+                optional: true
           env:
             # NetworkPolicy can't reliably restrict egress straight to the
             # apiserver's ClusterIP (kube-proxy's DNAT to the real backend

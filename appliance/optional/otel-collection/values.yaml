@@ -1,0 +1,145 @@
+# otel-agent on an appliance: one collector per node (a DaemonSet; on a
+# single-node appliance, one pod) that
+#   - receives OTLP traces from the Humi services (see telemetry-env in
+#     manifests/telemetry-env.yaml),
+#   - tails every container's logs from the node,
+#   - scrapes kubelet and host metrics,
+# and forwards all of it, authenticated, to the central otel-ingest.
+#
+# Adapted from hallen-gitops-base/otel-collection/base/agent (values-common.yaml +
+# values.yaml), the collector the in-house clusters run. Differences: one
+# self-contained file, smaller resources, and the cluster name and token come
+# from the manually created `otlp-token` Secret instead of a generated
+# ConfigMap. Keep the two broadly in step when changing either.
+
+mode: daemonset
+fullnameOverride: otel-agent
+
+image:
+  repository: otel/opentelemetry-collector-contrib
+
+service:
+  enabled: true
+  # Apps reach the agent on their own node, so k8s_attributes can match the
+  # connection's source IP to the sending pod.
+  internalTrafficPolicy: Local
+
+presets:
+  logsCollection:
+    enabled: true
+    # Remembers file offsets under /var/lib/otelcol on the host, so agent
+    # restarts don't re-send or drop logs. Makes the agent run as root.
+    storeCheckpoints: true
+  kubernetesAttributes:
+    enabled: true
+  kubeletMetrics:
+    enabled: true
+  hostMetrics:
+    enabled: true
+
+resources:
+  requests:
+    cpu: 50m
+    memory: 128Mi
+  limits:
+    memory: 512Mi
+
+extraEnvs:
+  # Both from the Secret created by hand when installing (see README.md).
+  # Until it exists the agent pod waits in CreateContainerConfigError.
+  - name: OTLP_TOKEN
+    valueFrom:
+      secretKeyRef:
+        name: otlp-token
+        key: token
+  - name: CLUSTER_NAME
+    valueFrom:
+      secretKeyRef:
+        name: otlp-token
+        key: cluster-name
+  - name: OTLP_ENDPOINT
+    value: https://otlp.hallen.kaese.space
+
+# No host ports: nothing here is reachable from outside the cluster.
+ports:
+  otlp:
+    hostPort: null
+  otlp-http:
+    hostPort: null
+  jaeger-compact:
+    enabled: false
+  jaeger-thrift:
+    enabled: false
+  jaeger-grpc:
+    enabled: false
+  zipkin:
+    enabled: false
+
+config:
+  extensions:
+    bearertokenauth/central:
+      token: ${env:OTLP_TOKEN}
+
+  receivers:
+    jaeger: null
+    zipkin: null
+    kubeletstats:
+      collection_interval: 60s
+      # k3s's kubelet serving cert isn't signed by the cluster CA the
+      # service account trusts.
+      insecure_skip_verify: true
+      metric_groups: [node, pod, container, volume]
+    hostmetrics:
+      collection_interval: 60s
+    # The collector's own metrics.
+    prometheus:
+      config:
+        scrape_configs:
+          - job_name: otel-agent
+            scrape_interval: 60s
+            static_configs:
+              - targets:
+                  - ${env:MY_POD_IP}:8888
+
+  processors:
+    resource/cluster:
+      attributes:
+        - key: k8s.cluster.name
+          value: ${env:CLUSTER_NAME}
+          action: upsert
+
+  exporters:
+    debug: null
+    otlp_http/central:
+      endpoint: ${env:OTLP_ENDPOINT}
+      auth:
+        authenticator: bearertokenauth/central
+      compression: gzip
+      # In-memory buffer + retries, so an appliance that is briefly offline
+      # (or a central restart) doesn't lose data. Lost on agent restart.
+      sending_queue:
+        enabled: true
+        queue_size: 5000
+      retry_on_failure:
+        enabled: true
+        max_elapsed_time: 30m
+
+  service:
+    extensions:
+      - health_check
+      - bearertokenauth/central
+    # The presets append their receivers (filelog, kubeletstats,
+    # hostmetrics) and the k8s_attributes processor to these pipelines.
+    pipelines:
+      logs:
+        receivers: [otlp]
+        processors: [memory_limiter, resource/cluster, batch]
+        exporters: [otlp_http/central]
+      metrics:
+        receivers: [otlp, prometheus]
+        processors: [memory_limiter, resource/cluster, batch]
+        exporters: [otlp_http/central]
+      traces:
+        receivers: [otlp]
+        processors: [memory_limiter, resource/cluster, batch]
+        exporters: [otlp_http/central]

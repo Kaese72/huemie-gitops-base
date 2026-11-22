@@ -1,0 +1,28 @@
+# huemie-local is default-deny (appliance/base/default/network-policies.yaml),
+# so its pods need an explicit allow to reach the agent. NetworkPolicies only
+# add permissions, so this one extra policy covers every pod there without
+# touching the per-service policies -- and goes away with the bundle.
+#
+# Nothing is added for otel-collection itself: it has no default-deny, and
+# the agent needs the Kubernetes API (k8s_attributes), the kubelet
+# (kubeletstats) and the internet (the central ingest).
+#
+# If traffic is still refused after this is applied, see the kube-router
+# drift note: delete and re-apply the policy rather than editing it.
+apiVersion: networking.k8s.io/v1
+kind: NetworkPolicy
+metadata:
+  name: otel-agent-egress
+  namespace: huemie-local
+spec:
+  podSelector: {}
+  policyTypes:
+    - Egress
+  egress:
+    - to:
+        - namespaceSelector:
+            matchLabels:
+              kubernetes.io/metadata.name: otel-collection
+      ports:
+        - port: 4318
+          protocol: TCP
