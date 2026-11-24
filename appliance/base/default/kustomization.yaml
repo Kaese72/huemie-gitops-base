@@ -46,6 +46,7 @@ configMapGenerator:
     - database.host=mariadb
     - database.user=chatbot
     - device-store.url=http://device-store.huemie-local:8080
+    - ittt-orchestrator.url=http://ittt-orchestrator.huemie-local:8080
     - anthropic.model=claude-haiku-4-5-20251001
     - authentication.internal-url=http://authentication.huemie-local:8081
 # Read by ingress-tls-bootstrap: the SANs (openssl subjectAltName syntax) the

@@ -249,6 +249,15 @@ spec:
               app.kubernetes.io/name: traefik
       ports:
         - port: 8080
+    # The chatbot's automation rule tools (its own LLM and its MCP endpoint).
+    # It presents the acting user's token, so the API's own rule
+    # view/modify permission checks still apply.
+    - from:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: chatbot
+      ports:
+        - port: 8080
   egress:
     - to:
         - namespaceSelector:

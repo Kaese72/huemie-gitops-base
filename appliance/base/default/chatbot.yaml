@@ -67,6 +67,13 @@ spec:
                 configMapKeyRef:
                   name: chatbot-configmap
                   key: device-store.url
+            # Automation rule tools; called as the same identity as
+            # device-store (the conversation owner, or the MCP caller).
+            - name: "ITTT_ORCHESTRATOR_URL"
+              valueFrom:
+                configMapKeyRef:
+                  name: chatbot-configmap
+                  key: ittt-orchestrator.url
             - name: "ANTHROPIC_MODEL"
               valueFrom:
                 configMapKeyRef:
@@ -223,6 +230,13 @@ spec:
         - podSelector:
             matchLabels:
               huemie.space/service-role: device-store
+      ports:
+        - port: 8080
+    # ittt-orchestrator's REST API (api mode), for the automation rule tools.
+    - to:
+        - podSelector:
+            matchLabels:
+              huemie.space/service-role: ittt-orchestrator
       ports:
         - port: 8080
     - to:
